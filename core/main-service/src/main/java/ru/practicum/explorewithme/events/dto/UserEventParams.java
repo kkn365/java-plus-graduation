@@ -16,7 +16,7 @@ public class UserEventParams {
     private Boolean onlyAvailable;
     private LocalDateTime rangeStart;
     private LocalDateTime rangeEnd;
-    private Optional<EventSortEnum> sort; // todo: не рекомендуется так делать
+    private Optional<EventSortEnum> sort;
     private Integer from;
     private Integer size;
 

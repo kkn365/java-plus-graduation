@@ -1,0 +1,47 @@
+server:
+  port: 0
+  servlet:
+    encoding:
+      force: true
+      charset: UTF-8
+
+stats-client:
+  server-url: stats-server
+
+spring:
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss  # Глобальный формат даты для java.util.Date
+    serialization:
+      write-dates-as-timestamps: false  # Отправляем даты в читаемом виде, а не как таймстемпы
+    default-property-inclusion: non_null  # Игнорируем null-значения при сериализации JSON
+
+  jpa:
+    hibernate.ddl-auto: update  # Автоматически обновляет схему БД при запуске (только для dev/тест)
+    properties:
+      hibernate:
+        format_sql: true  # Форматирует SQL-запросы в логах для удобства чтения
+        connection:
+          read_only: false  # База не находится в режиме только для чтения
+
+  sql:
+    init:
+      mode: always  # Всегда загружать инициализационные скрипты при старте
+
+  datasource:
+    driver-class-name: org.postgresql.Driver  # Используется вместо deprecated driverClassName
+    url: jdbc:postgresql://localhost:6432/ewm  # URL к локальной БД
+    username: ewm-main  # Имя пользователя БД
+    password: ewm-main  # Пароль пользователя БД
+
+logging:
+  level:
+    org:
+      springframework:
+        web: DEBUG  # Логирование веб-слоя Spring
+        http:
+          converter: TRACE  # Подробное логирование HTTP-конвертеров
+        orm:
+          jpa: INFO  # Логирование операций JPA
+          jpa.JpaTransactionManager: INFO  # Логирование транзакций JPA
+        transaction:
+          TransactionInterceptor: INFO  # Логирование Spring Transaction Interceptor

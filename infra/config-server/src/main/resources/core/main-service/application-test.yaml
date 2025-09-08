@@ -1,0 +1,49 @@
+server:
+  port: 0
+  servlet:
+    encoding:
+      force: true
+      charset: UTF-8
+
+stats-client:
+  server-url: stats-server
+
+spring:
+  config:
+    activate:
+      on-profile: test  # Активирует эту конфигурацию только при запущенном профиле 'test'
+
+  jpa:
+    hibernate:
+      ddl-auto: none  # Отключение автоматического управления схемой БД в тестах
+    properties:
+      hibernate:
+        format_sql: true  # Форматирование SQL-запросов в логах для удобства отладки
+
+  datasource:
+    driver-class-name: org.h2.Driver  # Используется вместо deprecated driverClassName
+    url: jdbc:h2:mem:explorewithme;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH  # H2 в памяти с PostgreSQL-совместимым режимом
+    username: ewm-main
+    password: ewm-main
+
+logging:
+  level:
+    org:
+      springframework:
+        orm:
+          jpa: TRACE  # Логирование операций JPA
+          jpa.JpaTransactionManager: TRACE  # Логирование транзакций JPA
+        transaction:
+          TransactionInterceptor: TRACE  # Логирование Spring Transaction Interceptor
+      hibernate:
+        SQL: TRACE  # Логирование SQL-запросов Hibernate
+        type.descriptor.sql.BasicBinder: TRACE  # Логирование значений, подставляемых в SQL
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: info
+  info:
+    env:
+      enabled: true

@@ -7,7 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 import ru.practicum.client.exception.BadRequestException;
@@ -29,8 +30,10 @@ import java.util.Optional;
 @Setter
 @Slf4j
 public class BaseClient {
-    @Value("${stats-client.server-url:http://localhost:9090}")
-    private String serverUrl;
+
+    private String serverDiscoveryUrl;
+    @Autowired
+    private DiscoveryClient discoveryClient;
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -58,17 +61,15 @@ public class BaseClient {
         HttpClient client = HttpClient.newHttpClient();
 
         URI uri = UriComponentsBuilder
-                .fromUriString(serverUrl + path)
+                .fromUriString(getServerUrl() + path)
                 .buildAndExpand(Objects.isNull(params) ? Map.of() : params)
                 .encode()
                 .toUri();
-
 
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                 .uri(uri)
                 .header("Accept", "application/json")
                 .header("Content-Type", "application/json;charset=UTF-8");
-
 
         HttpRequest.BodyPublisher publisher;
         if (List.of(HttpMethod.GET, HttpMethod.HEAD, HttpMethod.DELETE).contains(method) || Objects.isNull(body)) {
@@ -95,4 +96,20 @@ public class BaseClient {
 
         return Optional.empty();
     }
+
+    public String getServerUrl() {
+        try {
+            ServiceInstance serviceInstance = discoveryClient
+                    .getInstances(serverDiscoveryUrl)
+                    .getFirst();
+            String serverUrl = serviceInstance.getUri().toString();
+            log.info("Get {} uri: {}", serverUrl, serverUrl);
+            return serverUrl;
+        } catch (Exception exception) {
+            throw new InternalServerException(
+                    "Error finding statistics service address with id: " + serverDiscoveryUrl + ". Error: " + exception
+            );
+        }
+    }
+
 }

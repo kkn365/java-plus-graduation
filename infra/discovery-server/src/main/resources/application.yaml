@@ -1,0 +1,11 @@
+server:
+  port: 8761 # Порт, на котором будет запускаться Eureka Server (стандартный порт для сервис-дисковеров)
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    registerWithEureka: false
+    fetchRegistry: false
+    serviceUrl:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/

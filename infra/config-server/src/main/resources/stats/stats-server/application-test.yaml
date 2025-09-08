@@ -1,0 +1,40 @@
+server:
+  port: 9090  # Порт для тестового запуска сервиса stats-server
+
+debug: false  # Отключает подробное логирование Spring Boot, уменьшая объём логов
+
+spring:
+  config:
+    activate.on-profile: test  # Активирует эту конфигурацию только при запущенном профиле 'test'
+
+  jpa:
+    hibernate:
+      ddl-auto: none  # Отключение автоматического управления схемой БД в тестовой среде
+    properties:
+      hibernate:
+        format_sql: true  # Форматирует SQL-запросы в логах для удобства чтения
+
+  sql:
+    init:
+      mode: always  # Всегда загружать инициализационные скрипты при старте
+
+  datasource:
+    url: jdbc:h2:mem:ewm-stats;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH  # Используем H2 в памяти с PostgreSQL-совместимым режимом
+    username: ewm-stats
+    password: ewm-stats
+    driver-class-name: org.h2.Driver
+
+logging:
+  level:
+    org:
+      springframework:
+        orm:
+          jpa: TRACE  # Подробное логирование JPA операций
+          jpa.JpaTransactionManager: TRACE  # Логирование транзакций JPA
+        transaction:
+          TransactionInterceptor: TRACE  # Логирование Spring Transaction Interceptor
+      hibernate:
+        SQL: TRACE  # Логирование SQL-запросов Hibernate
+        type.descriptor.sql.BasicBinder: TRACE  # Логирование значений, подставляемых в SQL
+      zalando:
+        logbook: TRACE  # Логирование HTTP-трафика через Logbook (если используется)
