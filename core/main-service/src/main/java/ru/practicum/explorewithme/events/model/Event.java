@@ -2,12 +2,16 @@ package ru.practicum.explorewithme.events.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import ru.practicum.explorewithme.categories.model.Category;
 import ru.practicum.explorewithme.events.enumeration.EventState;
 import ru.practicum.explorewithme.users.model.User;
 
 import java.time.LocalDateTime;
 
+@Setter
+@Getter
 @Entity
 @Table(name = "events")
 @Data
@@ -60,4 +64,7 @@ public class Event {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EventState state = EventState.PENDING;
+
+    @Column(name = "views")
+    Long views;
 }

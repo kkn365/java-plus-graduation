@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS events
     paid               BOOLEAN                     NOT NULL DEFAULT FALSE,
     request_moderation BOOLEAN                     NOT NULL DEFAULT TRUE,
     state              VARCHAR(20)                 NOT NULL
+    views              BIGINT,
 );
 
 CREATE TABLE IF NOT EXISTS compilations

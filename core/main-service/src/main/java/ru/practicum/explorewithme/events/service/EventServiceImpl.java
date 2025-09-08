@@ -159,8 +159,18 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public Event findEventById(Long eventId) {
-        return eventRepository.findById(eventId)
+        Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
+
+        Optional<Collection<HitsStatDTO>> hitsStatDTOS = statsClient.getAll(
+                event.getCreatedOn(),
+                event.getEventDate(),
+                List.of("/events/" + event.getId()),
+                false);
+
+        event.setViews(hitsStatDTOS.get(0).getHits());
+        eventRepository.save(event);
+        return event;
     }
 
     @Override
