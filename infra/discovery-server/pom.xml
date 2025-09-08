@@ -12,11 +12,19 @@
     <artifactId>discovery-server</artifactId>
 
     <dependencies>
+
         <!-- Eureka Server: основная зависимость для запуска сервис-дисковера -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
         </dependency>
+
+        <!-- Actuator: для мониторинга и управления приложением -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

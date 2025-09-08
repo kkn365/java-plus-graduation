@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: gateway  # Имя сервиса в сервис-дисковере
+    name: gateway-server  # Имя сервиса в сервис-дисковере
   config:
     import: "configserver:"  # Подтягивает конфигурацию из Spring Cloud Config Server
   cloud:
