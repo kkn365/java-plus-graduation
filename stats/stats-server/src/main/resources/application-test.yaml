@@ -1,0 +1,37 @@
+server:
+  port: 9090
+
+debug: false
+
+spring:
+  config:
+    activate.on-profile: test
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: true
+  sql:
+    init:
+      mode: always
+  datasource:
+    url: jdbc:h2:mem:ewm-stats;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: ewm-stats
+    password: ewm-stats
+    driverClassName: org.h2.Driver
+
+logging:
+  level:
+    org:
+      springframework:
+        orm:
+          jpa: TRACE
+          jpa.JpaTransactionManager: TRACE
+        transaction: TRACE
+        transaction.interceptor: TRACE
+      hibernate:
+        SQL: TRACE
+        type.descriptor.sql.BasicBinder: TRACE
+      zalando:
+        logbook: TRACE
