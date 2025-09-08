@@ -12,12 +12,15 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-@Service
 @Slf4j
+@Service
 public class StatsClient extends BaseClient {
-    public Optional<Collection<HitsStatDTO>> getAll(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
-        UriComponentsBuilder builder = UriComponentsBuilder
-                .fromUriString("/stats");
+
+    public Optional<Collection<HitsStatDTO>> getAll(LocalDateTime start,
+                                                    LocalDateTime end,
+                                                    List<String> uris,
+                                                    Boolean unique) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString("/stats");
         Map<String, Object> params = new HashMap<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -52,4 +55,5 @@ public class StatsClient extends BaseClient {
 
         return Optional.empty();
     }
+
 }

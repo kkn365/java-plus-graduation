@@ -21,15 +21,15 @@ public class StatsService {
 
         if (uris == null || uris.isEmpty()) {
             if (unique) {
-                return hitsRepository.findUniqueIpStats(start, end);
+                return hitsRepository.getStatsWithoutUrisUnique(start, end);
             } else {
-                return hitsRepository.findAllStats(start, end);
+                return hitsRepository.getStatsWithoutUrisNotUnique(start, end);
             }
         } else {
             if (unique) {
-                return hitsRepository.findUniqueIpStatsForUris(start, end, uris);
+                return hitsRepository.getStatsWithUrisUnique(start, end, uris);
             } else {
-                return hitsRepository.findAllStatsForUris(start, end, uris);
+                return hitsRepository.getStatsWithUrisNotUnique(start, end, uris);
             }
         }
     }

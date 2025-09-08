@@ -11,31 +11,45 @@ import java.util.List;
 
 public interface HitsRepository extends JpaRepository<Hit, Long> {
 
-    @Query("SELECT new ru.practicum.dto.HitsStatDTO(h.app, h.uri, COUNT(h)) " +
-           "FROM Hit h " +
-           "WHERE h.timestamp BETWEEN :start AND :end " +
-           "GROUP BY h.app, h.uri " +
-            "ORDER BY COUNT(h) DESC")
-    List<HitsStatDTO> findAllStats(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    @Query("""
+           SELECT new ru.practicum.dto.HitsStatDTO(h.app, h.uri, COUNT(h.ip))
+           FROM Hit h
+           WHERE h.timestamp BETWEEN :start AND :end
+           GROUP BY h.app, h.uri
+           ORDER BY COUNT(h.ip) DESC
+           """)
+    List<HitsStatDTO> getStatsWithoutUrisNotUnique(@Param("start") LocalDateTime start,
+                                                   @Param("end") LocalDateTime end);
 
-    @Query("SELECT new ru.practicum.dto.HitsStatDTO(h.app, h.uri, COUNT(DISTINCT h.ip)) " +
-           "FROM Hit h " +
-           "WHERE h.timestamp BETWEEN :start AND :end " +
-           "GROUP BY h.app, h.uri " +
-            "ORDER BY COUNT(DISTINCT h.ip) DESC")
-    List<HitsStatDTO> findUniqueIpStats(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    @Query("""
+           SELECT new ru.practicum.dto.HitsStatDTO(h.app, h.uri, COUNT(DISTINCT h.ip))
+           FROM Hit h
+           WHERE h.timestamp BETWEEN :start AND :end
+           GROUP BY h.app, h.uri
+           ORDER BY COUNT(DISTINCT h.ip) DESC
+           """)
+    List<HitsStatDTO> getStatsWithoutUrisUnique(@Param("start") LocalDateTime start,
+                                                @Param("end") LocalDateTime end);
 
-    @Query("SELECT new ru.practicum.dto.HitsStatDTO(h.app, h.uri, COUNT(h)) " +
-           "FROM Hit h " +
-           "WHERE h.timestamp BETWEEN :start AND :end AND h.uri IN :uris " +
-           "GROUP BY h.app, h.uri " +
-            "ORDER BY COUNT(h) DESC")
-    List<HitsStatDTO> findAllStatsForUris(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, @Param("uris") List<String> uris);
+    @Query("""
+           SELECT new ru.practicum.dto.HitsStatDTO(h.app, h.uri, COUNT(h.ip))
+           FROM Hit h
+           WHERE h.timestamp BETWEEN :start AND :end AND h.uri IN :uris
+           GROUP BY h.app, h.uri
+           ORDER BY COUNT(h.ip) DESC
+           """)
+    List<HitsStatDTO> getStatsWithUrisNotUnique(@Param("start") LocalDateTime start,
+                                                @Param("end") LocalDateTime end,
+                                                @Param("uris") List<String> uris);
 
-    @Query("SELECT new ru.practicum.dto.HitsStatDTO(h.app, h.uri, COUNT(DISTINCT h.ip)) " +
-           "FROM Hit h " +
-           "WHERE h.timestamp BETWEEN :start AND :end AND h.uri IN :uris " +
-           "GROUP BY h.app, h.uri " +
-            "ORDER BY COUNT(DISTINCT h.ip) DESC")
-    List<HitsStatDTO> findUniqueIpStatsForUris(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, @Param("uris") List<String> uris);
+    @Query("""
+           SELECT new ru.practicum.dto.HitsStatDTO(h.app, h.uri, COUNT(DISTINCT h.ip))
+           FROM Hit h
+           WHERE h.timestamp BETWEEN :start AND :end AND h.uri IN :uris
+           GROUP BY h.app, h.uri
+           ORDER BY COUNT(DISTINCT h.ip) DESC
+           """)
+    List<HitsStatDTO> getStatsWithUrisUnique(@Param("start") LocalDateTime start,
+                                             @Param("end") LocalDateTime end,
+                                             @Param("uris") List<String> uris);
 }

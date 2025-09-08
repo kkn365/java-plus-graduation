@@ -32,6 +32,7 @@ import ru.practicum.explorewithme.users.repository.RequestRepository;
 import ru.practicum.explorewithme.users.service.UserService;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -115,7 +116,7 @@ public class EventServiceImpl implements EventService {
                 LocalDateTime checkPublishDate = LocalDateTime.now().plusHours(1L);
                 if (
                         (!Objects.isNull(newEventDto.getEventDate()) && checkPublishDate.isAfter(newEventDto.getEventDate()))
-                                || checkPublishDate.isAfter(event.getEventDate())
+                        || checkPublishDate.isAfter(event.getEventDate())
                 ) {
                     throw new ConflictException("The start date of the modified event must be no earlier than one hour from the publication date");
                 }
@@ -159,23 +160,8 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public Event findEventById(Long eventId) {
-        Event event = eventRepository.findById(eventId)
+        return eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
-
-        Optional<Collection<HitsStatDTO>> hitsStatDTOS = statsClient.getAll(
-                event.getCreatedOn(),
-                event.getEventDate(),
-                List.of("/events/" + event.getId()),
-                false);
-
-        if (hitsStatDTOS.isEmpty()) {
-            return event;
-        }
-        HitsStatDTO hitsStatDTO = hitsStatDTOS.get().stream().findFirst()
-                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
-        event.setViews(hitsStatDTO.getHits() + 1L);
-        eventRepository.save(event);
-        return event;
     }
 
     @Override
@@ -241,7 +227,11 @@ public class EventServiceImpl implements EventService {
 
         EventDto eventDto = eventMapper.toDto(event);
 
-        loadViews(List.of(eventDto), event.getCreatedOn(), event.getEventDate());
+        loadViews(
+                List.of(eventDto),
+                event.getCreatedOn(),
+                LocalDateTime.now()
+        );
         loadConfirmedRequests(List.of(eventDto));
 
         return eventDto;
@@ -301,7 +291,10 @@ public class EventServiceImpl implements EventService {
             });
 
         } else {
-            events.forEach(event -> event.setViews(0L));
+            events.forEach(event -> {
+                event.setViews(event.getViews() == null ? 0L : event.getViews() + 1);
+                eventRepository.save(eventMapper.toModel(event));
+            });
         }
     }
 
