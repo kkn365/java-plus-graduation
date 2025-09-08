@@ -168,12 +168,12 @@ public class EventServiceImpl implements EventService {
                 List.of("/events/" + event.getId()),
                 false);
 
-        if (!hitsStatDTOS.isPresent()) {
+        if (hitsStatDTOS.isEmpty()) {
             return event;
         }
         HitsStatDTO hitsStatDTO = hitsStatDTOS.get().stream().findFirst()
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
-        event.setViews(hitsStatDTO.getHits());
+        event.setViews(hitsStatDTO.getHits() + 1L);
         eventRepository.save(event);
         return event;
     }
