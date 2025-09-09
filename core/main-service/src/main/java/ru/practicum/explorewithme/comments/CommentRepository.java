@@ -1,4 +1,4 @@
-package ru.practicum.explorewithme.comments.repository;
+package ru.practicum.explorewithme.comments;
 
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;

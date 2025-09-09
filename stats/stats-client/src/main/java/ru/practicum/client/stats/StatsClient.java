@@ -10,17 +10,19 @@ import ru.practicum.dto.HitsStatDTO;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
-@Slf4j
 @Service
+@Slf4j
 public class StatsClient extends BaseClient {
-
-    public Optional<Collection<HitsStatDTO>> getAll(LocalDateTime start,
-                                                    LocalDateTime end,
-                                                    List<String> uris,
-                                                    Boolean unique) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString("/stats");
+    public Optional<Collection<HitsStatDTO>> getAll(LocalDateTime start, LocalDateTime end, List<String> uris, Boolean unique) {
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromUriString("/stats");
         Map<String, Object> params = new HashMap<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -55,5 +57,4 @@ public class StatsClient extends BaseClient {
 
         return Optional.empty();
     }
-
 }

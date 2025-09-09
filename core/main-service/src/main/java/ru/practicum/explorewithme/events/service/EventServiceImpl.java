@@ -32,8 +32,12 @@ import ru.practicum.explorewithme.users.repository.RequestRepository;
 import ru.practicum.explorewithme.users.service.UserService;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static ru.practicum.explorewithme.events.repository.EventRepository.AdminEventSpecification.withAdminEventParams;
@@ -116,7 +120,7 @@ public class EventServiceImpl implements EventService {
                 LocalDateTime checkPublishDate = LocalDateTime.now().plusHours(1L);
                 if (
                         (!Objects.isNull(newEventDto.getEventDate()) && checkPublishDate.isAfter(newEventDto.getEventDate()))
-                        || checkPublishDate.isAfter(event.getEventDate())
+                                || checkPublishDate.isAfter(event.getEventDate())
                 ) {
                     throw new ConflictException("The start date of the modified event must be no earlier than one hour from the publication date");
                 }
@@ -152,7 +156,7 @@ public class EventServiceImpl implements EventService {
 
         EventDto eventDto = eventMapper.toDto(event);
 
-        loadViews(List.of(eventDto), event.getCreatedOn(), event.getEventDate());
+        loadViews(List.of(eventDto), event.getPublishedOn(), event.getEventDate());
         loadConfirmedRequests(List.of(eventDto));
 
         return eventDto;
@@ -227,11 +231,7 @@ public class EventServiceImpl implements EventService {
 
         EventDto eventDto = eventMapper.toDto(event);
 
-        loadViews(
-                List.of(eventDto),
-                event.getCreatedOn(),
-                LocalDateTime.now()
-        );
+        loadViews(List.of(eventDto), event.getPublishedOn(), event.getEventDate());
         loadConfirmedRequests(List.of(eventDto));
 
         return eventDto;
@@ -291,10 +291,7 @@ public class EventServiceImpl implements EventService {
             });
 
         } else {
-            events.forEach(event -> {
-                event.setViews(event.getViews() == null ? 0L : event.getViews() + 1);
-                eventRepository.save(eventMapper.toModel(event));
-            });
+            events.forEach(event -> event.setViews(0L));
         }
     }
 
@@ -351,7 +348,7 @@ public class EventServiceImpl implements EventService {
 
         EventDto eventDto = eventMapper.toDto(currentEvent);
 
-        loadViews(List.of(eventDto), currentEvent.getCreatedOn(), currentEvent.getEventDate());
+        loadViews(List.of(eventDto), currentEvent.getPublishedOn(), currentEvent.getEventDate());
         loadConfirmedRequests(List.of(eventDto));
 
         return eventDto;

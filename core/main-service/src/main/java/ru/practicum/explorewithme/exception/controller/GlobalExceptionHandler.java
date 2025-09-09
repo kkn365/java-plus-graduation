@@ -10,7 +10,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
-import ru.practicum.explorewithme.exception.*;
+import ru.practicum.explorewithme.exception.ConflictException;
+import ru.practicum.explorewithme.exception.DataAlreadyExistException;
+import ru.practicum.explorewithme.exception.ForbiddenException;
+import ru.practicum.explorewithme.exception.NotFoundException;
+import ru.practicum.explorewithme.exception.RelatedDataDeleteException;
 import ru.practicum.explorewithme.exception.model.ApiError;
 
 import java.io.PrintWriter;

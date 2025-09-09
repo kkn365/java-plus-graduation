@@ -1,4 +1,4 @@
-package ru.practicum.explorewithme.comments.service;
+package ru.practicum.explorewithme.comments;
 
 import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
@@ -20,12 +20,11 @@ import ru.practicum.explorewithme.users.model.ParticipationRequest;
 import ru.practicum.explorewithme.users.model.User;
 import ru.practicum.explorewithme.users.repository.RequestRepository;
 import ru.practicum.explorewithme.users.service.UserService;
-import ru.practicum.explorewithme.comments.repository.CommentRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static ru.practicum.explorewithme.comments.repository.CommentRepository.AdminCommentSpecification.withAdminCommentParams;
+import static ru.practicum.explorewithme.comments.CommentRepository.AdminCommentSpecification.withAdminCommentParams;
 import static ru.practicum.explorewithme.exception.NotFoundException.notFoundException;
 
 

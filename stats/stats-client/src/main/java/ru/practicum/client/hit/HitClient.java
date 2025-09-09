@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import ru.practicum.client.BaseClient;
 import ru.practicum.dto.CreateHitDTO;
 
+
 @Service
 @Slf4j
 public class HitClient extends BaseClient {

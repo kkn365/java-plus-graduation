@@ -1,17 +1,22 @@
 package ru.practicum.explorewithme.events.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
 import ru.practicum.explorewithme.categories.model.Category;
 import ru.practicum.explorewithme.events.enumeration.EventState;
 import ru.practicum.explorewithme.users.model.User;
 
 import java.time.LocalDateTime;
 
-@Setter
-@Getter
 @Entity
 @Table(name = "events")
 @Data
@@ -64,7 +69,4 @@ public class Event {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EventState state = EventState.PENDING;
-
-    @Column(name = "views")
-    Long views;
 }
