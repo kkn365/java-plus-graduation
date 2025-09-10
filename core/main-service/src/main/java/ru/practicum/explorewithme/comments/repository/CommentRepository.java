@@ -1,4 +1,4 @@
-package ru.practicum.explorewithme.comments;
+package ru.practicum.explorewithme.comments.repository;
 
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
@@ -13,6 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Repository для работы с сущностью Comment.
+ * Расширяет JpaRepository и JpaSpecificationExecutor для поддержки сложных запросов.
+ */
 public interface CommentRepository extends JpaRepository<Comment, Long>, JpaSpecificationExecutor<Comment> {
 
     Optional<Comment> findById(long id);
@@ -25,20 +29,29 @@ public interface CommentRepository extends JpaRepository<Comment, Long>, JpaSpec
 
     List<Comment> findByEventIdAndStatus(long eventId, CommentStatus status);
 
-    interface AdminCommentSpecification {
-        static Specification<Comment> withAdminCommentParams(AdminCommentParams params) {
+    boolean existsByAuthorIdAndEventId(Long id, Long id1);
+
+    /**
+     * Спецификация для фильтрации комментариев по параметрам администратора.
+     * Позволяет гибко строить запросы на основе переданных критериев.
+     */
+    class AdminCommentSpecification {
+        public static Specification<Comment> withAdminCommentParams(AdminCommentParams params) {
             return (root, query, criteriaBuilder) -> {
                 List<Predicate> predicates = new ArrayList<>();
 
-                // Фильтр по id комментариев
+                // Фильтр по списку ID комментариев
                 if (params.getComments() != null && !params.getComments().isEmpty()) {
                     predicates.add(root.get("id").in(params.getComments()));
                 }
 
-                // Поиск по тексту
+                // Поиск по тексту (чувствительность к регистру отключена)
                 if (StringUtils.hasText(params.getText())) {
                     String likePattern = "%" + params.getText().toLowerCase() + "%";
-                    predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("text")), likePattern));
+                    predicates.add(criteriaBuilder.like(
+                            criteriaBuilder.lower(root.get("text")),
+                            likePattern
+                    ));
                 }
 
                 // Фильтр по событиям
@@ -51,28 +64,39 @@ public interface CommentRepository extends JpaRepository<Comment, Long>, JpaSpec
                     predicates.add(root.get("author").in(params.getAuthors()));
                 }
 
-                // Фильтр по состояниям
+                // Фильтр по статусам
                 if (params.getStatus() != null && !params.getStatus().isEmpty()) {
                     predicates.add(root.get("status").in(params.getStatus()));
                 }
 
-                // Фильтр по диапазону даты создания
+                // Диапазон даты создания
                 if (params.getCreatedDateStart() != null) {
-                    predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdDate"), params.getCreatedDateStart()));
+                    predicates.add(criteriaBuilder.greaterThanOrEqualTo(
+                            root.get("createdDate"),
+                            params.getCreatedDateStart()
+                    ));
                 }
-                if (params.getCreatedDateStart() != null) {
-                    predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdDate"), params.getCreatedDateStart()));
+                if (params.getCreatedDateEnd() != null) {
+                    predicates.add(criteriaBuilder.lessThanOrEqualTo(
+                            root.get("createdDate"),
+                            params.getCreatedDateEnd()
+                    ));
                 }
 
-                // Фильтр по диапазону даты публикации
+                // Диапазон даты публикации
                 if (params.getPublishedDateStart() != null) {
-                    predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("publishedDate"), params.getPublishedDateStart()));
+                    predicates.add(criteriaBuilder.greaterThanOrEqualTo(
+                            root.get("publishedDate"),
+                            params.getPublishedDateStart()
+                    ));
                 }
                 if (params.getPublishedDateEnd() != null) {
-                    predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("publishedDate"), params.getPublishedDateEnd()));
+                    predicates.add(criteriaBuilder.lessThanOrEqualTo(
+                            root.get("publishedDate"),
+                            params.getPublishedDateEnd()
+                    ));
                 }
 
-                // Возвращаем объединение всех условий через AND
                 return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
             };
         }

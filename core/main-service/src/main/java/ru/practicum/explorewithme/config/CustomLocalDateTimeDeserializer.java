@@ -8,17 +8,28 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import static ru.practicum.explorewithme.util.DateTimeFormatConstants.DATE_TIME_FORMAT;
+
+/**
+ * Пользовательский десериализатор для преобразования строк в формате дата-время в объекты {@link LocalDateTime}.
+ * <p>
+ * Используется для обработки нестандартных или локализованных форматов дат, отличных от ISO 8601.
+ */
 public class CustomLocalDateTimeDeserializer extends JsonDeserializer<LocalDateTime> {
-    private static final DateTimeFormatter FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
-    public LocalDateTime deserialize(JsonParser parser, DeserializationContext context) throws IOException {
-        String dateString = parser.getText(); // Получаем строку из JSON
+    public LocalDateTime deserialize(JsonParser p, DeserializationContext context) throws IOException {
+        final String value = p.getValueAsString();
+
+        // Обработка null и пустых значений
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+
         try {
-            return LocalDateTime.parse(dateString, FORMATTER); // Парсим строку в LocalDateTime
+            return LocalDateTime.parse(p.getValueAsString(), DateTimeFormatter.ofPattern(DATE_TIME_FORMAT));
         } catch (Exception e) {
-            throw new IOException("Failed to parse date: " + dateString, e);
+            throw new IOException("Неверный формат даты: должно быть " + DATE_TIME_FORMAT, e);
         }
     }
 }

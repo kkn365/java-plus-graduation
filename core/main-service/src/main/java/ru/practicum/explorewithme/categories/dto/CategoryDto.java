@@ -10,16 +10,30 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+/**
+ * DTO для представления категории событий.
+ * <p>
+ * Используется при возврате данных клиенту. Содержит идентификатор и название категории.
+ */
 @Getter
 @Setter
 @Builder
-@EqualsAndHashCode
-@ToString
+@EqualsAndHashCode(of = "id")
+@ToString(of = {"id", "name"})
 @AllArgsConstructor
 @NoArgsConstructor
 public class CategoryDto {
+    /**
+     * Уникальный идентификатор категории.
+     */
     private Long id;
-    @NotBlank(message = "Category name should not be blank.")
-    @Size(min = 1, max = 50, message = "Category name should be between 1 and 50 characters.")
+
+    /**
+     * Название категории.
+     * <p>
+     * Обязательное поле. Длина от 1 до 50 символов.
+     */
+    @NotBlank(message = "Название категории не может быть пустым")
+    @Size(min = 1, max = 50, message = "Название категории должно быть от 1 до 50 символов")
     private String name;
 }

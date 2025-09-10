@@ -17,97 +17,88 @@ import ru.practicum.explorewithme.exception.NotFoundException;
 import ru.practicum.explorewithme.exception.RelatedDataDeleteException;
 import ru.practicum.explorewithme.exception.model.ApiError;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-
+/**
+ * Глобальный обработчик исключений для приложения.
+ * <p>
+ * Обрабатывает все исключения, возникающие в контроллерах, и возвращает соответствующие HTTP-ответы.
+ */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler
+    /**
+     * Обрабатывает ошибку отсутствия объекта (HTTP 404).
+     *
+     * @param e Исключение, содержащее детали ошибки
+     * @return Ответ с информацией об ошибке
+     */
+    @ExceptionHandler(NotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ApiError handleNotFound(final NotFoundException e) {
-        log.error("{} {}", HttpStatus.NOT_FOUND, e.getMessage());
-        return new ApiError(HttpStatus.NOT_FOUND, "The requested object was not found.", e.getMessage(), getStackTrace(e));
+        log.error("NotFoundException: {}", e.getMessage(), e);
+        return new ApiError(HttpStatus.NOT_FOUND, "Запрашиваемый объект не найден", e.getMessage());
     }
 
-    @ExceptionHandler
+    /**
+     * Обрабатывает ошибки валидации параметров запроса (HTTP 400).
+     *
+     * @param e Исключение, содержащее детали ошибки
+     * @return Ответ с информацией об ошибке
+     */
+    @ExceptionHandler({
+            MethodArgumentNotValidException.class,
+            ValidationException.class,
+            HandlerMethodValidationException.class,
+            ConstraintViolationException.class,
+            MissingServletRequestParameterException.class
+    })
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiError handleValidationException(final MethodArgumentNotValidException e) {
-        log.error("{} {}", HttpStatus.BAD_REQUEST, e.getMessage());
-        return new ApiError(HttpStatus.BAD_REQUEST, "Error with the input parameter.", e.getMessage(), getStackTrace(e));
+    public ApiError handleValidationException(final Exception e) {
+        log.error("ValidationException: {}", e.getMessage(), e);
+        return new ApiError(HttpStatus.BAD_REQUEST, "Ошибка валидации входных данных", e.getMessage());
     }
 
-    @ExceptionHandler
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiError handleValidationException(final ValidationException e) {
-        log.error("{} {}", HttpStatus.BAD_REQUEST, e.getMessage());
-        return new ApiError(HttpStatus.BAD_REQUEST, "Validation exception: ", e.getMessage(), getStackTrace(e));
-    }
-
-    @ExceptionHandler
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiError handleValidationException(final HandlerMethodValidationException e) {
-        log.error("{} {}", HttpStatus.BAD_REQUEST, e.getMessage());
-        return new ApiError(HttpStatus.BAD_REQUEST, "Validation exception: ", e.getMessage(), getStackTrace(e));
-    }
-
-    @ExceptionHandler
+    /**
+     * Обрабатывает конфликты данных (HTTP 409).
+     *
+     * @param e Исключение, содержащее детали ошибки
+     * @return Ответ с информацией об ошибке
+     */
+    @ExceptionHandler({
+            DataAlreadyExistException.class,
+            ConflictException.class,
+            RelatedDataDeleteException.class
+    })
     @ResponseStatus(HttpStatus.CONFLICT)
-    public ApiError handleDataAlreadyExistException(final DataAlreadyExistException e) {
-        log.error("{} {}", HttpStatus.CONFLICT, e.getMessage());
-        return new ApiError(HttpStatus.CONFLICT, "The data must be unique.", e.getMessage(), getStackTrace(e));
+    public ApiError handleConflict(final Exception e) {
+        log.error("ConflictException: {}", e.getMessage(), e);
+        return new ApiError(HttpStatus.CONFLICT, "Конфликт данных", e.getMessage());
     }
 
-    @ExceptionHandler
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public ApiError handleDataAlreadyExistException(final ConflictException e) {
-        log.error("{} {}", HttpStatus.CONFLICT, e.getMessage());
-        return new ApiError(HttpStatus.CONFLICT, "Runtime conflict", e.getMessage(), getStackTrace(e));
-    }
-
-    @ExceptionHandler
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public ApiError handleRelatedDataDeleteException(final RelatedDataDeleteException e) {
-        log.error("{} {}", HttpStatus.CONFLICT, e.getMessage());
-        return new ApiError(HttpStatus.CONFLICT, "Deleting related data is not allowed.", e.getMessage(), getStackTrace(e));
-    }
-
-    @ExceptionHandler
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ApiError handleException(final Throwable e) {
-        String getStackTrace = getStackTrace(e);
-        log.error("{} {} {}", HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage(), getStackTrace);
-        return new ApiError(HttpStatus.INTERNAL_SERVER_ERROR, "Error ...", e.getMessage(), getStackTrace);
-    }
-
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler
-    public ApiError handleOnConstraintValidationException(final ConstraintViolationException e) {
-        log.error("{} {}", HttpStatus.BAD_REQUEST, e.getMessage());
-        return new ApiError(HttpStatus.BAD_REQUEST, "Constraint Validation Exception.", e.getMessage(), getStackTrace(e));
-    }
-
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler
-    public ApiError handleOnMissingServletRequestParameterException(final MissingServletRequestParameterException e) {
-        log.error("{} {}", HttpStatus.BAD_REQUEST, e.getMessage());
-        return new ApiError(HttpStatus.BAD_REQUEST, "MissingServletRequestParameterException Validation Exception.",
-                e.getMessage(), getStackTrace(e));
-    }
-
-    @ExceptionHandler
+    /**
+     * Обрабатывает ошибку запрещённого доступа (HTTP 403).
+     *
+     * @param e Исключение, содержащее детали ошибки
+     * @return Ответ с информацией об ошибке
+     */
+    @ExceptionHandler(ForbiddenException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
-    public ApiError handleForbiddenException(final ForbiddenException e) {
-        log.error("{} {}", HttpStatus.FORBIDDEN, e.getMessage());
-        return new ApiError(HttpStatus.FORBIDDEN, "Access denied...",
-                e.getMessage(), getStackTrace(e));
+    public ApiError handleForbidden(final ForbiddenException e) {
+        log.error("ForbiddenException: {}", e.getMessage(), e);
+        return new ApiError(HttpStatus.FORBIDDEN, "Доступ запрещён", e.getMessage());
     }
 
-    private String getStackTrace(Throwable e) {
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw);
-        e.printStackTrace(pw);
-        return sw.toString();
+    /**
+     * Обрабатывает внутренние ошибки сервера (HTTP 500).
+     *
+     * @param e Исключение, содержащее детали ошибки
+     * @return Ответ с информацией об ошибке
+     */
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ApiError handleInternalServerError(final Exception e) {
+        log.error("InternalServerError: {}", e.getMessage(), e);
+        return new ApiError(HttpStatus.INTERNAL_SERVER_ERROR, "Внутренняя ошибка сервера",
+                "Произошла непредвиденная ошибка. Попробуйте позже.");
     }
 }

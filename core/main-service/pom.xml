@@ -74,13 +74,6 @@
             <artifactId>jakarta.persistence-api</artifactId>
         </dependency>
 
-        <!-- QueryDSL: расширенная работа с JPA -->
-        <dependency>
-            <groupId>com.querydsl</groupId>
-            <artifactId>querydsl-jpa</artifactId>
-            <classifier>jakarta</classifier>
-        </dependency>
-
         <!-- Логгирование запросов -->
         <dependency>
             <groupId>org.zalando</groupId>
@@ -93,17 +86,6 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
-        </dependency>
-
-        <!-- MapStruct: автоматическое отображение объектов -->
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <scope>provided</scope>
         </dependency>
 
         <!-- Внутренний модуль: клиент статистики -->

@@ -3,6 +3,7 @@ package ru.practicum.explorewithme.events.service;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -16,9 +17,12 @@ import ru.practicum.explorewithme.categories.service.CategoryService;
 import ru.practicum.explorewithme.events.dto.AdminEventParams;
 import ru.practicum.explorewithme.events.dto.EventDto;
 import ru.practicum.explorewithme.events.dto.NewEventDto;
+import ru.practicum.explorewithme.events.dto.UpdateEventAdminRequest;
+import ru.practicum.explorewithme.events.dto.UpdateEventUserRequest;
 import ru.practicum.explorewithme.events.dto.UserEventParams;
 import ru.practicum.explorewithme.events.enumeration.EventState;
 import ru.practicum.explorewithme.events.enumeration.EventStateAction;
+import ru.practicum.explorewithme.events.enumeration.EventSortEnum;
 import ru.practicum.explorewithme.events.mapper.EventMapper;
 import ru.practicum.explorewithme.events.model.Event;
 import ru.practicum.explorewithme.events.repository.EventRepository;
@@ -40,9 +44,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static ru.practicum.explorewithme.events.repository.EventRepository.AdminEventSpecification.withAdminEventParams;
-import static ru.practicum.explorewithme.events.repository.EventRepository.UserEventSpecification.withUserEventParams;
+import static ru.practicum.explorewithme.events.repository.EventRepository.AdminEventSpec.withAdminParams;
+import static ru.practicum.explorewithme.events.repository.EventRepository.UserEventSpec.withUserParams;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EventServiceImpl implements EventService {
@@ -55,79 +60,89 @@ public class EventServiceImpl implements EventService {
     private final HitClient hitClient;
     private final StatsClient statsClient;
 
+    /**
+     * Создаёт новое событие на основе данных из DTO и идентификатора пользователя.
+     *
+     * @param newEventDto данные нового события
+     * @param userId      идентификатор пользователя (инициатор события)
+     * @return DTO созданного события
+     */
     @Override
     public EventDto addEvent(NewEventDto newEventDto, Long userId) {
+        // Получаем сущность пользователя и категории из сервисов
         User user = userService.getUser(userId);
         Category category = categoryService.getCategoryById(newEventDto.getCategory());
 
-        EventDto eventDto = eventMapper.convertShortDto(newEventDto);
-        Event event = eventMapper.toModel(eventDto);
+        // Преобразуем DTO в модель события
+        Event event = eventMapper.toModel(newEventDto);
+
+        // Устанавливаем значения по умолчанию для необязательных полей
         event.setInitiator(user);
         event.setCategory(category);
         event.setCreatedOn(LocalDateTime.now());
+        event.setPaid(Objects.requireNonNullElse(newEventDto.getPaid(), false));
+        event.setParticipantLimit(Objects.requireNonNullElse(newEventDto.getParticipantLimit(), 0));
+        event.setRequestModeration(Objects.requireNonNullElse(newEventDto.getRequestModeration(), true));
 
-        if (newEventDto.getPaid() == null) {
-            event.setPaid(false);
-        }
-
-        if (newEventDto.getParticipantLimit() == null) {
-            event.setParticipantLimit(0);
-        }
-
-        if (newEventDto.getRequestModeration() == null) {
-            event.setRequestModeration(true);
-        }
-
+        // Сохраняем событие в репозитории
         Event savedEvent = eventRepository.save(event);
+
+        // Преобразуем сохранённую модель обратно в DTO
         EventDto savedEventDto = eventMapper.toDto(savedEvent);
-
-        savedEventDto.setViews(0L);
-        savedEventDto.setConfirmedRequests(0);
-
+        log.info("Событие создано: {}", savedEventDto);
         return savedEventDto;
     }
 
+    /**
+     * Обновляет событие пользователем-инициатором.
+     * <p>
+     * Проверяет, что событие принадлежит пользователю и находится в состоянии ОЖИДАНИЕ или ОТМЕНЕНО.
+     *
+     * @param eventId       Идентификатор события
+     * @param newEventDto   Данные для обновления события
+     * @param userId        Идентификатор пользователя (инициатор)
+     * @return DTO обновлённого события
+     */
     @Override
-    public EventDto updateEventByUser(Long eventId, NewEventDto newEventDto, Long userId) {
+    public EventDto updateEventByUser(Long eventId, UpdateEventUserRequest newEventDto, Long userId) {
         Event event = findEventById(eventId);
-        checkInitiatorId(event, userId);
+        validateInitiator(event, userId);
 
         if (!List.of(EventState.CANCELED, EventState.PENDING).contains(event.getState())) {
-            throw new ConflictException("Only pending or canceled events can be changed");
+            throw new ConflictException("Можно изменять только события в состоянии ОЖИДАНИЕ или ОТМЕНЕНО");
         }
 
-        return doUpdateEvent(event, newEventDto);
+        NewEventDto updatedData = eventMapper.toNewEventDto(newEventDto);
+
+        // Обновляем данные события
+        return updateEvent(event, updatedData);
     }
 
+    /**
+     * Обновляет событие администратором.
+     * <p>
+     * Позволяет изменять состояние события (ОПУБЛИКОВАТЬ, ОТКЛОНИТЬ) и другие параметры.
+     * Выполняются проверки на корректность действий и текущего состояния события.
+     *
+     * @param eventId       Идентификатор события
+     * @param newEventDto   DTO с новыми данными события
+     * @return Обновлённое событие в виде DTO
+     * @throws ConflictException если действие или состояние события некорректны
+     */
     @Override
-    public EventDto updateEventByAdmin(Long eventId, NewEventDto newEventDto) {
+    public EventDto updateEventByAdmin(Long eventId, UpdateEventAdminRequest newEventDto) {
+        // Получаем событие по ID
         Event event = findEventById(eventId);
 
-        if (!Objects.isNull(newEventDto.getStateAction())) {
-            if (!List.of(EventStateAction.PUBLISH_EVENT, EventStateAction.REJECT_EVENT).contains(newEventDto.getStateAction())) {
-                throw new ConflictException("Invalid action: " + newEventDto.getStateAction());
-            }
-
-            if (newEventDto.getStateAction().equals(EventStateAction.PUBLISH_EVENT) && !event.getState().equals(EventState.PENDING)) {
-                throw new ConflictException("Cannot change state the event because it's not in the right state: PENDING");
-            }
-
-            if (newEventDto.getStateAction().equals(EventStateAction.REJECT_EVENT) && event.getState().equals(EventState.PUBLISHED)) {
-                throw new ConflictException("Cannot change state the event because it's not in the right state: PUBLISHED");
-            }
-
-            if (newEventDto.getStateAction().equals(EventStateAction.PUBLISH_EVENT)) {
-                LocalDateTime checkPublishDate = LocalDateTime.now().plusHours(1L);
-                if (
-                        (!Objects.isNull(newEventDto.getEventDate()) && checkPublishDate.isAfter(newEventDto.getEventDate()))
-                                || checkPublishDate.isAfter(event.getEventDate())
-                ) {
-                    throw new ConflictException("The start date of the modified event must be no earlier than one hour from the publication date");
-                }
-            }
+        // Проверяем и обрабатываем действие над состоянием события
+        if (newEventDto.getStateAction() != null) {
+            validateAdminStateAction(newEventDto.getStateAction(), event);
         }
 
-        return doUpdateEvent(event, newEventDto);
+        NewEventDto updatedData = eventMapper.toNewEventDto(newEventDto);
+
+        // Обновляем данные события
+        return updateEvent(event, updatedData);
     }
 
     @Override
@@ -135,9 +150,13 @@ public class EventServiceImpl implements EventService {
         UserDto userDto = userService.getById(userId);
         int page = from / size;
 
-        List<Event> events = eventRepository.findAllByInitiatorId(userDto.getId(), PageRequest.of(page, size)).stream().toList();
+        List<Event> events = eventRepository.findAllByInitiatorId(userDto.getId(),
+                PageRequest.of(page, size)).stream().toList();
 
-        List<EventDto> eventDtos = eventMapper.toDto(events);
+        List<EventDto> eventDtos = events.stream()
+                .map(eventMapper::toDto)
+                .toList();
+
 
         loadViews(
                 eventDtos,
@@ -149,84 +168,166 @@ public class EventServiceImpl implements EventService {
         return eventDtos;
     }
 
+    /**
+     * Возвращает событие в виде DTO для указанного пользователя.
+     * <p>
+     * Метод проверяет, что событие принадлежит пользователю, и загружает дополнительную статистику.
+     *
+     * @param userId   Идентификатор пользователя (инициатор события)
+     * @param eventId  Идентификатор события
+     * @return DTO события с полной информацией
+     */
     @Override
     public EventDto findUserEvent(Long userId, Long eventId) {
+        // Получаем событие по ID
         Event event = findEventById(eventId);
-        checkInitiatorId(event, userId);
 
+        // Проверяем, что событие принадлежит пользователю
+        validateInitiator(event, userId);
+
+        // Преобразуем модель события в DTO
         EventDto eventDto = eventMapper.toDto(event);
 
+        // Загружаем статистику просмотров и количество подтверждённых заявок
         loadViews(List.of(eventDto), event.getPublishedOn(), event.getEventDate());
         loadConfirmedRequests(List.of(eventDto));
 
         return eventDto;
     }
 
+    /**
+     * Ищет событие по его идентификатору.
+     * <p>
+     * Если событие не найдено, выбрасывается NotFoundException.
+     *
+     * @param eventId Идентификатор события
+     * @return Найденное событие
+     * @throws NotFoundException если событие с указанным ID не существует
+     */
     @Override
     public Event findEventById(Long eventId) {
         return eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
+                .orElseThrow(() -> new NotFoundException("Событие с ID=" + eventId + " не найдено"));
     }
 
+    /**
+     * Получает список событий, соответствующих параметрам администратора.
+     * <p>
+     * Метод выполняет фильтрацию и пагинацию событий на основе переданных параметров.
+     * Также подгружает статистику просмотров и количество подтверждённых заявок.
+     *
+     * @param adminEventParams Параметры запроса: список пользователей, список категорий,
+     *                         диапазон дат, список статусов событий, пагинация
+     * @return Список DTO событий, соответствующих критериям
+     */
     @Override
     public List<EventDto> findAllByAdminParams(AdminEventParams adminEventParams) {
+        // Создание объекта PageRequest для пагинации и сортировки
         PageRequest pageRequest = PageRequest.of(
                 adminEventParams.getFrom() / adminEventParams.getSize(),
                 adminEventParams.getSize(),
                 Sort.by("eventDate").ascending()
         );
 
-        Page<Event> events = eventRepository.findAll(withAdminEventParams(adminEventParams), pageRequest);
+        // Получение событий из репозитория по спецификации
+        Page<Event> eventsPage = eventRepository.findAll(withAdminParams(adminEventParams), pageRequest);
 
-        List<EventDto> eventDtos = eventMapper.toDto(events.stream().toList());
+        // Преобразование моделей событий в DTO
+        List<EventDto> eventDtos = eventsPage.stream()
+                .map(eventMapper::toDto)
+                .toList();
+
+        // Подгрузка статистики просмотров и количества подтверждённых заявок
         loadViews(eventDtos, adminEventParams.getRangeStart(), adminEventParams.getRangeEnd());
         loadConfirmedRequests(eventDtos);
 
         return eventDtos;
     }
 
+    /**
+     * Получает список событий, соответствующих параметрам пользователя.
+     * <p>
+     * Метод выполняет фильтрацию и пагинацию событий на основе переданных параметров.
+     * Также подгружает статистику просмотров и количество подтверждённых заявок.
+     * Если указано, результат может быть отсортирован по количеству просмотров.
+     *
+     * @param userEventParams Параметры запроса: текст для поиска, категория, диапазон дат, флаг платности,
+     *                        флаг доступности, сортировка, пагинация
+     * @return Список DTO событий, соответствующих критериям
+     * @throws ValidationException если диапазон дат некорректен (rangeEnd <= rangeStart)
+     */
     @Override
     public List<EventDto> findAllByUserParams(UserEventParams userEventParams) {
-        if (userEventParams.getRangeStart() != null && userEventParams.getRangeEnd() != null && !userEventParams.getRangeEnd().isAfter(userEventParams.getRangeStart())) {
-            throw new ValidationException("rangeEnd must be after rangeStart");
+        // Проверка корректности диапазона дат
+        if (userEventParams.getRangeStart() != null &&
+            userEventParams.getRangeEnd() != null &&
+            !userEventParams.getRangeEnd().isAfter(userEventParams.getRangeStart())) {
+            throw new ValidationException("rangeEnd должен быть позже, чем rangeStart");
         }
 
+        // Создание объекта PageRequest для пагинации и сортировки
         PageRequest pageRequest = PageRequest.of(
                 userEventParams.getFrom() / userEventParams.getSize(),
                 userEventParams.getSize(),
                 Sort.by("eventDate").ascending()
         );
 
-        Page<Event> events = eventRepository.findAll(withUserEventParams(userEventParams), pageRequest);
+        // Получение событий из репозитория по спецификации
+        Page<Event> eventsPage = eventRepository.findAll(withUserParams(userEventParams), pageRequest);
 
-        List<EventDto> eventDtos = eventMapper.toDto(events.stream().toList());
+        // Преобразование моделей событий в DTO
+        // ArrayList для сортировки
+        List<EventDto> eventDtos = new java.util.ArrayList<>(eventsPage.stream()
+                .map(eventMapper::toDto)
+                .toList());
+
+        // Загрузка статистики просмотров и подтверждённых заявок
         loadViews(eventDtos, userEventParams.getRangeStart(), userEventParams.getRangeEnd());
         loadConfirmedRequests(eventDtos);
 
-        if (userEventParams.getSort().isPresent() && userEventParams.getSort().get().equals(UserEventParams.EventSortEnum.VIEWS)) {
+        // Проверяем наличие и значение параметра сортировки
+        if (userEventParams.getSort() != null
+            && userEventParams.getSort().equals(EventSortEnum.VIEWS)) {
             eventDtos.sort(Comparator.comparing(EventDto::getViews).reversed());
         }
 
         return eventDtos;
     }
 
+    /**
+     * Отправляет информацию о хите (просмотре) в сервис статистики.
+     * <p>
+     * Формирует DTO с данными запроса и передаёт его клиенту для обработки.
+     *
+     * @param request Объект HTTP-запроса, из которого извлекаются IP и URI
+     */
     @Override
     public void sendHit(HttpServletRequest request) {
-        hitClient.hit(CreateHitDTO
+        CreateHitDTO dto = CreateHitDTO
                 .builder()
                 .app("main-service")
                 .ip(request.getRemoteAddr())
                 .uri(request.getRequestURI())
                 .timestamp(LocalDateTime.now())
-                .build());
+                .build();
+        hitClient.hit(dto);
+        log.debug("Отправлен hit: {}", dto);
     }
 
+    /**
+     * Возвращает DTO события, если оно находится в состоянии ПУБЛИКОВАНО.
+     * <p>
+     * Если событие не найдено или его статус отличен от ПУБЛИКОВАНО, выбрасывается NotFoundException.
+     *
+     * @param eventId Идентификатор события
+     * @return DTO события
+     */
     @Override
     public EventDto findPublishedEvent(Long eventId) {
         Event event = findEventById(eventId);
 
         if (!event.getState().equals(EventState.PUBLISHED)) {
-            throw new NotFoundException("Event with id=" + eventId + " was not found");
+            throw new NotFoundException("Событие с ID=" + eventId + " не найдено или не опубликовано");
         }
 
         EventDto eventDto = eventMapper.toDto(event);
@@ -237,118 +338,197 @@ public class EventServiceImpl implements EventService {
         return eventDto;
     }
 
-    private void checkInitiatorId(Event event, Long userId) {
+    /**
+     * Проверяет, что событие принадлежит указанному пользователю.
+     * <p>
+     * Если инициатор события не совпадает с переданным userId, выбрасывается ConflictException.
+     *
+     * @param event  Событие, которое нужно проверить
+     * @param userId Идентификатор пользователя, который должен быть инициатором события
+     */
+    private void validateInitiator(Event event, Long userId) {
         if (!event.getInitiator().getId().equals(userId)) {
-            throw new ConflictException("Event with id " + event.getId() + "don't compare with initiator " + userId);
+            throw new ConflictException("Событие с ID "
+                                        + event.getId()
+                                        + " не соответствует инициатору "
+                                        + userId);
         }
     }
 
+    /**
+     * Проверяет корректность действия над состоянием события для администратора.
+     * <p>
+     * Выполняет валидацию на основе текущего состояния события и запрашиваемого действия.
+     *
+     * @param action  Действие над состоянием события
+     * @param event   Текущее событие
+     * @throws ConflictException если действие или состояние события некорректны
+     */
+    private void validateAdminStateAction(EventStateAction action, Event event) {
+        switch (action) {
+            case PUBLISH_EVENT:
+                if (!event.getState().equals(EventState.PENDING)) {
+                    throw new ConflictException("Нельзя изменить состояние события, так как оно не находится в правильном состоянии: ОЖИДАНИЕ");
+                }
+                validatePublishDate(event);
+                break;
+            case REJECT_EVENT:
+                if (event.getState().equals(EventState.PUBLISHED)) {
+                    throw new ConflictException("Нельзя изменить состояние события, так как оно не находится в правильном состоянии: ОПУБЛИКОВАНО");
+                }
+                break;
+            default:
+                throw new ConflictException("Недопустимое действие: " + action);
+        }
+    }
+
+    /**
+     * Проверяет, что дата начала события не ранее чем через один час после публикации.
+     * <p>
+     * Согласно требованиям, событие не может быть опубликовано, если его начало менее чем через час.
+     *
+     * @param event Текущее событие
+     * @throws ConflictException если дата начала события некорректна
+     */
+    private void validatePublishDate(Event event) {
+        LocalDateTime nowPlusHour = LocalDateTime.now().plusHours(1L);
+        if (nowPlusHour.isAfter(event.getEventDate())) {
+            throw new ConflictException("Дата начала события не может быть раньше чем через один час после публикации");
+        }
+    }
+
+    /**
+     * Загружает количество подтверждённых заявок для переданных событий.
+     * <p>
+     * Использует репозиторий заявок, чтобы получить данные о количестве подтверждённых заявок по каждому событию.
+     *
+     * @param events Список DTO событий, для которых нужно загрузить количество подтверждённых заявок
+     */
     private void loadConfirmedRequests(List<EventDto> events) {
-        List<Long> eventIds = events
-                .stream()
+        if (events.isEmpty()) {
+            return; // Нет событий — ничего не делать
+        }
+
+        // Получаем ID всех событий из DTO
+        List<Long> eventIds = events.stream()
                 .map(EventDto::getId)
                 .toList();
 
-        List<EventRequestCount> eventsCountByStatus = requestRepository.findEventsCountByStatus(eventIds, RequestStatus.CONFIRMED);
+        // Запрашиваем количество подтверждённых заявок по каждому событию
+        List<EventRequestCount> confirmedRequests = requestRepository.countByStatusForEvents(eventIds, RequestStatus.CONFIRMED);
 
-        Map<Long, Long> requests = eventsCountByStatus
-                .stream()
+        // Создаём маппинг: ID события → количество подтверждённых заявок
+        Map<Long, Long> eventIdToRequestsCount = confirmedRequests.stream()
                 .collect(Collectors.toMap(
                         EventRequestCount::getEventId,
                         EventRequestCount::getRequestsCount
                 ));
 
-        events.forEach(event -> {
-            Long requestCount = requests.get(event.getId());
-            requestCount = Objects.isNull(requestCount) ? 0L : requestCount;
-            event.setConfirmedRequests(Math.toIntExact(requestCount));
-        });
+        // Обновляем DTO событий значениями количества подтверждённых заявок
+        for (EventDto event : events) {
+            Long count = eventIdToRequestsCount.getOrDefault(event.getId(), 0L);
+            event.setConfirmedRequests(Math.toIntExact(count));
+        }
     }
 
+    /**
+     * Загружает статистику просмотров (views) для переданных событий за указанный период.
+     * <p>
+     * Использует клиент статистики (statsClient), чтобы получить количество просмотров по URI событий.
+     *
+     * @param events Список DTO событий, для которых нужно загрузить статистику
+     * @param start  Начальная дата диапазона для подсчёта просмотров
+     * @param end    Конечная дата диапазона для подсчёта просмотров
+     */
     private void loadViews(List<EventDto> events, LocalDateTime start, LocalDateTime end) {
-        Map<Long, String> eventIds = events
-                .stream()
-                .collect(Collectors.toMap(
-                        EventDto::getId,
-                        event -> "/events/" + event.getId()
-                ));
+        if (events.isEmpty()) {
+            return; // Нет событий — ничего не делать
+        }
+        Map<String, Long> uriToHits;
 
-        Optional<Collection<HitsStatDTO>> hitsStatDTOS = statsClient.getAll(
+        // Создаём маппинг между ID события и URI для запроса статистики
+        Map<Long, String> eventUriMap = events.stream()
+                .collect(Collectors.toMap(EventDto::getId, event -> "/events/" + event.getId()));
+
+        // Получаем статистику просмотров из внешнего сервиса
+        Optional<Collection<HitsStatDTO>> statsResponse = statsClient.getAll(
                 start,
                 end,
-                eventIds.values().stream().toList(),
+                eventUriMap.values().stream().toList(),
                 true
         );
 
-        if (hitsStatDTOS.isPresent() && !hitsStatDTOS.get().isEmpty()) {
-            Map<String, Long> hitsStats = hitsStatDTOS.get()
-                    .stream()
+        // Если данные получены, создаём маппинг URI → количество просмотров
+        if (statsResponse.isPresent() && !statsResponse.get().isEmpty()) {
+            uriToHits = statsResponse.get().stream()
                     .collect(Collectors.toMap(HitsStatDTO::getUri, HitsStatDTO::getHits));
-
-            events.forEach(event -> {
-                Long hit = hitsStats.get(eventIds.get(event.getId()));
-                event.setViews(Objects.isNull(hit) ? 0L : hit);
-            });
-
         } else {
+            // Если данных нет, устанавливаем просмотры в 0 для всех событий
             events.forEach(event -> event.setViews(0L));
+            return;
+        }
+
+        // Обновляем DTO событий значениями статистики
+        for (EventDto event : events) {
+            String uri = eventUriMap.get(event.getId());
+            event.setViews(uriToHits.getOrDefault(uri, 0L));
         }
     }
 
-    private EventDto doUpdateEvent(Event currentEvent, NewEventDto newEventDto) {
-        if (!Objects.isNull(newEventDto.getAnnotation())) {
-            currentEvent.setAnnotation(newEventDto.getAnnotation());
-        }
+    private EventDto updateEvent(Event event, NewEventDto dto) {
+        if (EventStateAction.PUBLISH_EVENT.equals(dto.getStateAction())) {
+            LocalDateTime nowPlusHour = LocalDateTime.now().plusHours(1L);
+            LocalDateTime eventDate = dto.getEventDate() != null ? dto.getEventDate() : event.getEventDate();
 
-        if (!Objects.isNull(newEventDto.getCategory())) {
-            currentEvent.setCategory(categoryService.getCategoryById(newEventDto.getCategory()));
+            if (nowPlusHour.isAfter(eventDate)) {
+                throw new ConflictException("Дата начала события не может быть ранее чем через один час после публикации");
+            }
         }
-
-        if (!Objects.isNull(newEventDto.getDescription())) {
-            currentEvent.setDescription(newEventDto.getDescription());
+        if (dto.getEventDate() != null) {
+            event.setEventDate(dto.getEventDate());
         }
-
-        if (!Objects.isNull(newEventDto.getEventDate())) {
-            currentEvent.setEventDate(newEventDto.getEventDate());
+        if (dto.getAnnotation() != null) {
+            event.setAnnotation(dto.getAnnotation());
         }
-
-        if (!Objects.isNull(newEventDto.getLocation())) {
-            currentEvent.setLocationLat(newEventDto.getLocation().getLat());
-            currentEvent.setLocationLon(newEventDto.getLocation().getLon());
+        if (dto.getCategory() != null) {
+            event.setCategory(categoryService.getCategoryById(dto.getCategory()));
         }
-
-        if (!Objects.isNull(newEventDto.getPaid())) {
-            currentEvent.setPaid(newEventDto.getPaid());
+        if (dto.getDescription() != null) {
+            event.setDescription(dto.getDescription());
         }
-
-        if (!Objects.isNull(newEventDto.getParticipantLimit())) {
-            currentEvent.setParticipantLimit(newEventDto.getParticipantLimit());
+        if (dto.getLocation() != null) {
+            event.setLocationLat(dto.getLocation().getLat());
+            event.setLocationLon(dto.getLocation().getLon());
         }
-
-        if (!Objects.isNull(newEventDto.getRequestModeration())) {
-            currentEvent.setRequestModeration(newEventDto.getRequestModeration());
+        if (dto.getPaid() != null) {
+            event.setPaid(dto.getPaid());
         }
-
-        if (!Objects.isNull(newEventDto.getTitle())) {
-            currentEvent.setTitle(newEventDto.getTitle());
+        if (dto.getParticipantLimit() != null) {
+            event.setParticipantLimit(dto.getParticipantLimit());
         }
-
-        if (!Objects.isNull(newEventDto.getStateAction())) {
-            switch (newEventDto.getStateAction()) {
-                case REJECT_EVENT, CANCEL_REVIEW -> currentEvent.setState(EventState.CANCELED);
+        if (dto.getRequestModeration() != null) {
+            event.setRequestModeration(dto.getRequestModeration());
+        }
+        if (dto.getTitle() != null) {
+            event.setTitle(dto.getTitle());
+        }
+        if (dto.getStateAction() != null) {
+            switch (dto.getStateAction()) {
+                case REJECT_EVENT, CANCEL_REVIEW -> event.setState(EventState.CANCELED);
                 case PUBLISH_EVENT -> {
-                    currentEvent.setState(EventState.PUBLISHED);
-                    currentEvent.setPublishedOn(LocalDateTime.now());
+                    event.setState(EventState.PUBLISHED);
+                    event.setPublishedOn(LocalDateTime.now());
                 }
-                case SEND_TO_REVIEW -> currentEvent.setState(EventState.PENDING);
+                case SEND_TO_REVIEW -> event.setState(EventState.PENDING);
             }
         }
 
-        eventRepository.save(currentEvent);
+        eventRepository.save(event);
+        log.info("Событие изменено: {}", event);
 
-        EventDto eventDto = eventMapper.toDto(currentEvent);
+        EventDto eventDto = eventMapper.toDto(event);
 
-        loadViews(List.of(eventDto), currentEvent.getPublishedOn(), currentEvent.getEventDate());
+        loadViews(List.of(eventDto), event.getPublishedOn(), event.getEventDate());
         loadConfirmedRequests(List.of(eventDto));
 
         return eventDto;

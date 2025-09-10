@@ -1,8 +1,6 @@
 package ru.practicum.explorewithme.events.repository;
 
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -20,114 +18,116 @@ import ru.practicum.explorewithme.users.model.RequestStatus;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecificationExecutor<Event> {
 
     Page<Event> findAllByInitiatorId(@Param("initiator_id") Long initiator, Pageable pageable);
 
-    interface AdminEventSpecification {
-        static Specification<Event> withAdminEventParams(AdminEventParams params) {
-            return (root, query, criteriaBuilder) -> {
+    /**
+     * Спецификация для фильтра событий администратора.
+     */
+    class AdminEventSpec {
+        public static Specification<Event> withAdminParams(AdminEventParams params) {
+            return (root, query, cb) -> {
                 List<Predicate> predicates = new ArrayList<>();
 
-                // Фильтр по пользователям (initiator)
-                if (params.getUsers() != null && !params.getUsers().isEmpty()) {
+                // Фильтр по инициаторам
+                if (params.getUsers() != null) {
                     predicates.add(root.get("initiator").get("id").in(params.getUsers()));
                 }
 
-                // Фильтр по состояниям
-                if (params.getStates() != null && !params.getStates().isEmpty()) {
+                // Фильтр по статусам
+                if (params.getStates() != null) {
                     predicates.add(root.get("state").in(params.getStates()));
                 }
 
                 // Фильтр по категориям
-                if (params.getCategories() != null && !params.getCategories().isEmpty()) {
+                if (params.getCategories() != null) {
                     predicates.add(root.get("category").get("id").in(params.getCategories()));
                 }
 
-                // Фильтр по диапазону дат
-                if (params.getRangeStart() != null) {
-                    predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("eventDate"), params.getRangeStart()));
-                }
-                if (params.getRangeEnd() != null) {
-                    predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("eventDate"), params.getRangeEnd()));
-                }
+                // Диапазон дат
+                addDatePredicates(cb, root, predicates, params.getRangeStart(), params.getRangeEnd());
 
-                // Возвращаем объединение всех условий через AND
-                return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+                return cb.and(predicates.toArray(new Predicate[0]));
             };
         }
     }
 
-    interface UserEventSpecification {
-        static Specification<Event> withUserEventParams(UserEventParams params) {
-            return (root, query, criteriaBuilder) -> {
-
-
+    /**
+     * Спецификация для фильтра событий пользователя.
+     */
+    class UserEventSpec {
+        public static Specification<Event> withUserParams(UserEventParams params) {
+            return (root, query, cb) -> {
                 List<Predicate> predicates = new ArrayList<>();
 
-                predicates.add(criteriaBuilder.equal(root.get("state"), EventState.PUBLISHED));
+                // Основной фильтр: только опубликованные события
+                predicates.add(cb.equal(root.get("state"), EventState.PUBLISHED));
 
-                // Поиск по annotation или description
+                // Поиск по тексту
                 if (StringUtils.hasText(params.getText())) {
-                    String likePattern = "%" + params.getText().toLowerCase() + "%";
+                    String pattern = "%" + params.getText().toLowerCase() + "%";
                     predicates.add(
-                            criteriaBuilder.or(
-                                    criteriaBuilder.like(criteriaBuilder.lower(root.get("annotation")), likePattern),
-                                    criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), likePattern)
+                            cb.or(
+                                    cb.like(cb.lower(root.get("annotation")), pattern),
+                                    cb.like(cb.lower(root.get("description")), pattern)
                             )
                     );
                 }
 
                 // Фильтр по категориям
-                if (params.getCategories() != null && !params.getCategories().isEmpty()) {
+                if (params.getCategories() != null) {
                     predicates.add(root.get("category").get("id").in(params.getCategories()));
                 }
 
-                // Только платные события
+                // Платные/бесплатные
                 if (params.getPaid() != null) {
-                    if (params.getPaid()) {
-                        predicates.add(criteriaBuilder.isTrue(root.get("paid")));
-                    } else {
-                        predicates.add(criteriaBuilder.isFalse(root.get("paid")));
-
-                    }
+                    predicates.add(cb.equal(root.get("paid"), params.getPaid()));
                 }
 
-                // Проверка лимита участников
+                // Доступность по лимиту участников
                 if (params.getOnlyAvailable() != null && params.getOnlyAvailable()) {
-                    // Создаем подзапрос для подсчета подтвержденных запросов
-                    Subquery<Long> subquery = query.subquery(Long.class);
-                    Root<ParticipationRequest> requestRoot = subquery.from(ParticipationRequest.class);
-                    subquery.select(criteriaBuilder.count(requestRoot.get("id")))
+                    Subquery<Long> subquery = query != null ? query.subquery(Long.class) : null;
+                    Root<ParticipationRequest> reqRoot = Objects.requireNonNull(subquery).from(ParticipationRequest.class);
+                    subquery.select(cb.count(reqRoot.get("id")))
                             .where(
-                                    criteriaBuilder.equal(requestRoot.get("event").get("id"), root.get("id")),
-                                    criteriaBuilder.equal(requestRoot.get("status"), RequestStatus.CONFIRMED)
+                                    cb.equal(reqRoot.get("event").get("id"), root.get("id")),
+                                    cb.equal(reqRoot.get("status"), RequestStatus.CONFIRMED)
                             )
-                            .groupBy(requestRoot.get("event").get("id"));
+                            .groupBy(reqRoot.get("event").get("id"));
 
                     predicates.add(
-                            criteriaBuilder.or(
-                                    criteriaBuilder.isNull(subquery),
-                                    criteriaBuilder.lessThan(subquery, root.get("participantLimit"))
+                            cb.or(
+                                    cb.isNull(subquery),
+                                    cb.lessThan(subquery, root.get("participantLimit"))
                             )
                     );
                 }
 
-                // Фильтр по диапазону дат
-                if (params.getRangeStart() != null) {
-                    predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("eventDate"), params.getRangeStart()));
-                } else {
-                    predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("eventDate"), LocalDateTime.now()));
-                }
+                // Диапазон дат
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime start = params.getRangeStart() != null ? params.getRangeStart() : now;
 
-                if (params.getRangeEnd() != null) {
-                    predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("eventDate"), params.getRangeEnd()));
-                }
+                addDatePredicates(cb, root, predicates, start, params.getRangeEnd());
 
-                // Возвращаем объединение всех условий через AND
-                return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+                return cb.and(predicates.toArray(new Predicate[0]));
             };
+        }
+    }
+
+    /**
+     * Вспомогательный метод для добавления условий по диапазону дат.
+     */
+    private static void addDatePredicates(CriteriaBuilder cb, Root<Event> root,
+                                          List<Predicate> predicates,
+                                          LocalDateTime start, LocalDateTime end) {
+        if (start != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get("eventDate"), start));
+        }
+        if (end != null) {
+            predicates.add(cb.lessThanOrEqualTo(root.get("eventDate"), end));
         }
     }
 }
