@@ -1,5 +1,6 @@
 package ru.practicum.explorewithme.events.service;
 
+import feign.FeignException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
@@ -7,9 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import ru.practicum.client.hit.HitClient;
-import ru.practicum.client.stats.StatsClient;
+import ru.practicum.client.StatsClient;
 import ru.practicum.dto.CreateHitDTO;
 import ru.practicum.dto.HitsStatDTO;
 import ru.practicum.explorewithme.categories.model.Category;
@@ -36,12 +37,11 @@ import ru.practicum.explorewithme.users.repository.RequestRepository;
 import ru.practicum.explorewithme.users.service.UserService;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static ru.practicum.explorewithme.events.repository.EventRepository.AdminEventSpec.withAdminParams;
@@ -57,7 +57,6 @@ public class EventServiceImpl implements EventService {
     private final UserService userService;
     private final CategoryService categoryService;
     private final RequestRepository requestRepository;
-    private final HitClient hitClient;
     private final StatsClient statsClient;
 
     /**
@@ -277,7 +276,7 @@ public class EventServiceImpl implements EventService {
 
         // Преобразование моделей событий в DTO
         // ArrayList для сортировки
-        List<EventDto> eventDtos = new java.util.ArrayList<>(eventsPage.stream()
+        List<EventDto> eventDtos = new ArrayList<>(eventsPage.stream()
                 .map(eventMapper::toDto)
                 .toList());
 
@@ -310,7 +309,7 @@ public class EventServiceImpl implements EventService {
                 .uri(request.getRequestURI())
                 .timestamp(LocalDateTime.now())
                 .build();
-        hitClient.hit(dto);
+        statsClient.createHit(dto);
         log.debug("Отправлен hit: {}", dto);
     }
 
@@ -420,8 +419,8 @@ public class EventServiceImpl implements EventService {
         // Создаём маппинг: ID события → количество подтверждённых заявок
         Map<Long, Long> eventIdToRequestsCount = confirmedRequests.stream()
                 .collect(Collectors.toMap(
-                        EventRequestCount::getEventId,
-                        EventRequestCount::getRequestsCount
+                        EventRequestCount::eventId,
+                        EventRequestCount::requestsCount
                 ));
 
         // Обновляем DTO событий значениями количества подтверждённых заявок
@@ -444,34 +443,43 @@ public class EventServiceImpl implements EventService {
         if (events.isEmpty()) {
             return; // Нет событий — ничего не делать
         }
-        Map<String, Long> uriToHits;
 
         // Создаём маппинг между ID события и URI для запроса статистики
         Map<Long, String> eventUriMap = events.stream()
-                .collect(Collectors.toMap(EventDto::getId, event -> "/events/" + event.getId()));
+                .collect(Collectors.toMap(
+                        EventDto::getId,
+                        event -> "/events/" + event.getId(), // Формат URI согласно требованиям статистики
+                        (existing, replacement) -> existing)); // Обработка дубликатов (должно не случаться)
 
-        // Получаем статистику просмотров из внешнего сервиса
-        Optional<Collection<HitsStatDTO>> statsResponse = statsClient.getAll(
-                start,
-                end,
-                eventUriMap.values().stream().toList(),
-                true
-        );
+        try {
+            // Получаем статистику просмотров из внешнего сервиса
+            ResponseEntity<List<HitsStatDTO>> statsResponse = statsClient.getStats(
+                    start,
+                    end,
+                    List.copyOf(eventUriMap.values()), // Гарантируем неизменяемость списка
+                    true // Учитываем уникальные IP-адреса (статистика по уникальным просмотрам)
+            );
 
-        // Если данные получены, создаём маппинг URI → количество просмотров
-        if (statsResponse.isPresent() && !statsResponse.get().isEmpty()) {
-            uriToHits = statsResponse.get().stream()
-                    .collect(Collectors.toMap(HitsStatDTO::getUri, HitsStatDTO::getHits));
-        } else {
-            // Если данных нет, устанавливаем просмотры в 0 для всех событий
+            // Если данные получены, создаём маппинг URI → количество просмотров
+            if (statsResponse.hasBody()) {
+                List<HitsStatDTO> stats = statsResponse.getBody();
+                if (stats != null && !stats.isEmpty()) {
+                    Map<String, Long> uriToHits = stats.stream()
+                            .collect(Collectors.toMap(HitsStatDTO::getUri, HitsStatDTO::getHits));
+
+                    // Обновляем DTO событий значениями статистики
+                    for (EventDto event : events) {
+                        String uri = eventUriMap.get(event.getId());
+                        event.setViews(uriToHits.getOrDefault(uri, 0L));
+                    }
+                    return;
+                }
+            }
+            // Если данных нет или тело пустое, устанавливаем просмотры в 0 для всех событий
             events.forEach(event -> event.setViews(0L));
-            return;
-        }
-
-        // Обновляем DTO событий значениями статистики
-        for (EventDto event : events) {
-            String uri = eventUriMap.get(event.getId());
-            event.setViews(uriToHits.getOrDefault(uri, 0L));
+        } catch (FeignException e) {
+            log.error("Ошибка при получении статистики просмотров: {}", e.getMessage(), e);
+            // В случае ошибки оставляем текущие значения views без изменений
         }
     }
 

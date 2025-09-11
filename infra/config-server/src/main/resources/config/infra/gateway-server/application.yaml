@@ -14,6 +14,7 @@ spring:
       discovery:
         locator:
           enabled: true
+          lower-case-service-id: true
       routes:
         - id: main-service
           uri: lb://main-service
@@ -27,9 +28,9 @@ spring:
 
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.http.server.reactive: DEBUG
-    reactor.netty: DEBUG
+    org.springframework.cloud.gateway: INFO
+    org.springframework.http.server.reactive: INFO
+    reactor.netty: INFO
 
 management:
   endpoints:

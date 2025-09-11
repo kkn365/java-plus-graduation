@@ -9,40 +9,66 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.practicum.ewm.exception.model.ApiError;
 import ru.practicum.ewm.exception.model.StartAfterEndException;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-
+/**
+ * Глобальный обработчик исключений для приложения.
+ * <p>
+ * Централизованно обрабатывает исключения, возвращая структурированные ошибки в формате {@link ApiError}.
+ */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /**
+     * Обрабатывает необработанные исключения.
+     * Возвращает статус 500 и детализированное сообщение об ошибке.
+     *
+     * @param e исключение
+     * @return объект ошибки
+     */
     @ExceptionHandler
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ApiError handleException(final Exception e) {
-        log.error("500 {}", e.getMessage(), e);
-        return new ApiError(HttpStatus.INTERNAL_SERVER_ERROR, "Error ...", e.getMessage(), getStackTrace(e));
+    public ApiError handleInternalServerError(final Exception e) {
+        log.error("Внутренняя ошибка сервера: {}", e.getMessage(), e);
+        return new ApiError(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Внутренняя ошибка сервера",
+                e.getMessage()
+        );
     }
 
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    /**
+     * Обрабатывает отсутствие обязательного параметра в запросе.
+     * Возвращает статус 400 и описание проблемы.
+     *
+     * @param e исключение
+     * @return объект ошибки
+     */
     @ExceptionHandler
-    public ApiError handleOnMissingServletRequestParameterException(final MissingServletRequestParameterException e) {
-        log.error("{} {}", HttpStatus.BAD_REQUEST, e.getMessage());
-        return new ApiError(HttpStatus.BAD_REQUEST, "MissingServletRequestParameterException Validation Exception.",
-                e.getMessage(), getStackTrace(e));
-    }
-
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler
-    public ApiError handleOnStartAfterEndException(final StartAfterEndException e) {
-        log.error("{} {}", HttpStatus.BAD_REQUEST, e.getMessage());
-        return new ApiError(HttpStatus.BAD_REQUEST, "StartAfterEndException.",
-                e.getMessage(), getStackTrace(e));
+    public ApiError handleMissingRequestParam(final MissingServletRequestParameterException e) {
+        log.warn("Отсутствует обязательный параметр: {}", e.getMessage(), e);
+        return new ApiError(
+                HttpStatus.BAD_REQUEST,
+                "Отсутствующий параметр",
+                String.format("Параметр '%s' обязателен", e.getParameterName())
+        );
     }
 
-    private String getStackTrace(Throwable e) {
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw);
-        e.printStackTrace(pw);
-        return sw.toString();
+    /**
+     * Обрабатывает ошибку, когда начальная дата позже конечной.
+     * Возвращает статус 400 и понятное сообщение.
+     *
+     * @param e исключение
+     * @return объект ошибки
+     */
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleStartAfterEnd(final StartAfterEndException e) {
+        log.warn("Ошибка временного диапазона: {}", e.getMessage(), e);
+        return new ApiError(
+                HttpStatus.BAD_REQUEST,
+                "Некорректный временной диапазон",
+                "Дата начала не может быть позже даты окончания"
+        );
     }
 }
