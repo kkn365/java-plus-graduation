@@ -1,8 +1,8 @@
 package ru.practicum.ewm.stats.repository;
 
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.data.jpa.repository.JpaRepository;
 import ru.practicum.dto.HitsStatDTO;
 import ru.practicum.ewm.stats.model.Hit;
 

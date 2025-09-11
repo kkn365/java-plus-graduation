@@ -8,6 +8,8 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 import ru.practicum.client.exception.BadRequestException;
@@ -30,9 +32,11 @@ import java.util.Optional;
 @Slf4j
 public class BaseClient {
     @Value("${stats-client.server-url:http://localhost:9090}")
-    private String serverUrl;
+    private String serverDiscoveryUrlName;
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private DiscoveryClient discoveryClient;
 
     public <T> Optional<T> get(String path, TypeReference<T> typeReference) throws IOException, InterruptedException {
         return doRequest(HttpMethod.GET, path, null, null, typeReference);
@@ -57,8 +61,10 @@ public class BaseClient {
     private <T, K> Optional<T> doRequest(HttpMethod method, String path, Map<String, ?> params, K body, TypeReference<T> typeReference) throws IOException, InterruptedException {
         HttpClient client = HttpClient.newHttpClient();
 
+
+
         URI uri = UriComponentsBuilder
-                .fromUriString(serverUrl + path)
+                .fromUriString(getServerUrl() + path)
                 .buildAndExpand(Objects.isNull(params) ? Map.of() : params)
                 .encode()
                 .toUri();
@@ -94,5 +100,22 @@ public class BaseClient {
         }
 
         return Optional.empty();
+    }
+
+    public String getServerUrl() {
+        try {
+            ServiceInstance serviceInstance = discoveryClient
+                    .getInstances(serverDiscoveryUrlName)
+                    .getFirst();
+            String serverUrl = serviceInstance.getUri().toString();
+            log.info("Get {} uri: {}", serverUrl, serverUrl);
+            return serverUrl;
+        } catch (Exception exception) {
+            throw new InternalServerException(
+                    "Error finding statistics service address with id: " + serverDiscoveryUrlName + ". Error: " + exception
+            );
+        }
+
+
     }
 }

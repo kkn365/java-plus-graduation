@@ -1,0 +1,27 @@
+server:
+  port: 0  # Автоматически выбирает свободный порт
+
+spring:
+  application:
+    name: main-service  # Имя сервиса, используется в Eureka и логировании
+  config:
+    import: "configserver:"  # Подтягивает конфигурацию из Spring Cloud Config Server
+  cloud:
+    config:
+      discovery:
+        enabled: true  # Включает поиск Config Server через Eureka
+        service-id: config-server
+      fail-fast: true  # Запрещает запуск приложения, если не удалось загрузить конфигурацию
+      retry:
+        useRandomPolicy: true  # Использует случайную политику backoff между попытками
+        max-interval: 6000  # Максимальный интервал между попытками (в миллисекундах)
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/  # Адрес сервис-дисковера
+  instance:
+    preferIpAddress: true  # Регистрирует инстанс по IP вместо хостнейма
+    hostname: localhost  # Хостнейм для локальной разработки
+    instance-id: "${spring.application.name}:${server.port}"  # Уникальный идентификатор инстанса
+    leaseRenewalIntervalInSeconds: 10  # Интервал обновления аренды в Eureka

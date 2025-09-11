@@ -3,8 +3,8 @@ package ru.practicum.ewm.hits.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.ewm.mapper.HitMapper;
 import ru.practicum.dto.CreateHitDTO;
+import ru.practicum.ewm.mapper.HitMapper;
 import ru.practicum.ewm.stats.model.Hit;
 import ru.practicum.ewm.stats.repository.HitsRepository;
 

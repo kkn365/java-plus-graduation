@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
@@ -25,17 +26,130 @@
 	<properties>
 		<java.version>21</java.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<querydsl.version>5.1.0</querydsl.version>
+		<org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
 		<spring-cloud-dependencies.version>2025.0.0</spring-cloud-dependencies.version>
-		<springdoc-openapi-starter.version>2.6.0</springdoc-openapi-starter.version>
-<!--		<spring-cloud-starter-netflix-eureka-client.version>4.3.0</spring-cloud-starter-netflix-eureka-client.version>-->
-<!--		<spring-cloud-starter-openfeign.version>4.3.0</spring-cloud-starter-openfeign.version>-->
-		<!--       Plugins       -->
-		<maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
 	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.mapstruct</groupId>
+				<artifactId>mapstruct</artifactId>
+				<version>${org.mapstruct.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.mapstruct</groupId>
+				<artifactId>mapstruct-processor</artifactId>
+				<version>${org.mapstruct.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.querydsl</groupId>
+				<artifactId>querydsl-jpa</artifactId>
+				<classifier>jakarta</classifier>
+				<version>${querydsl.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.querydsl</groupId>
+				<artifactId>querydsl-apt</artifactId>
+				<classifier>jakarta</classifier>
+				<version>${querydsl.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud-dependencies.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<!-- QueryDSL JPA -->
+		<dependency>
+			<groupId>com.querydsl</groupId>
+			<artifactId>querydsl-jpa</artifactId>
+			<classifier>jakarta</classifier>
+		</dependency>
+
+		<!-- QueryDSL APT (для генерации кода) -->
+		<dependency>
+			<groupId>com.querydsl</groupId>
+			<artifactId>querydsl-apt</artifactId>
+			<classifier>jakarta</classifier>
+			<scope>provided</scope>
+		</dependency>
+
+		<!-- MapStruct -->
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct</artifactId>
+		</dependency>
+
+		<!-- MapStruct Processor -->
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct-processor</artifactId>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
 
 	<build>
 		<pluginManagement>
 			<plugins>
+				<!-- Spring Boot Maven Plugin: сборка и упаковка проекта -->
+				<plugin>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-maven-plugin</artifactId>
+					<configuration>
+						<layers>
+							<enabled>true</enabled>
+						</layers>
+						<excludes>
+							<exclude>
+								<groupId>org.projectlombok</groupId>
+								<artifactId>lombok</artifactId>
+							</exclude>
+							<exclude>
+								<groupId>org.mapstruct</groupId>
+								<artifactId>mapstruct</artifactId>
+							</exclude>
+							<exclude>
+								<groupId>org.mapstruct</groupId>
+								<artifactId>mapstruct-processor</artifactId>
+							</exclude>
+						</excludes>
+					</configuration>
+				</plugin>
+
+				<!-- QueryDSL APT Plugin: генерация QueryDSL классов -->
+				<plugin>
+					<groupId>com.mysema.maven</groupId>
+					<artifactId>apt-maven-plugin</artifactId>
+					<version>1.1.3</version>
+					<executions>
+						<execution>
+							<goals>
+								<goal>process</goal>
+							</goals>
+							<configuration>
+								<outputDirectory>target/generated-sources/java</outputDirectory>
+								<processor>com.querydsl.apt.jpa.JPAAnnotationProcessor</processor>
+							</configuration>
+						</execution>
+					</executions>
+					<dependencies>
+						<dependency>
+							<groupId>com.querydsl</groupId>
+							<artifactId>querydsl-apt</artifactId>
+							<classifier>jakarta</classifier>
+							<version>${querydsl.version}</version>
+						</dependency>
+					</dependencies>
+				</plugin>
+
+				<!-- Surefire Plugin: запуск тестов с активным профилем test -->
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-surefire-plugin</artifactId>
@@ -45,6 +159,8 @@
 						</systemPropertyVariables>
 					</configuration>
 				</plugin>
+
+				<!-- Checkstyle Plugin: проверка стиля кода -->
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-checkstyle-plugin</artifactId>
@@ -71,6 +187,8 @@
 						</dependency>
 					</dependencies>
 				</plugin>
+
+				<!-- SpotBugs Plugin: анализ потенциальных багов в коде -->
 				<plugin>
 					<groupId>com.github.spotbugs</groupId>
 					<artifactId>spotbugs-maven-plugin</artifactId>
@@ -87,6 +205,8 @@
 						</execution>
 					</executions>
 				</plugin>
+
+				<!-- Jacoco Plugin: покрытие кода тестами -->
 				<plugin>
 					<groupId>org.jacoco</groupId>
 					<artifactId>jacoco-maven-plugin</artifactId>
@@ -158,7 +278,9 @@
 			</plugins>
 		</pluginManagement>
 	</build>
+
 	<profiles>
+		<!-- Профиль для запуска проверки стиля кода -->
 		<profile>
 			<id>check</id>
 			<build>
@@ -182,6 +304,8 @@
 				</plugins>
 			</reporting>
 		</profile>
+
+		<!-- Профиль для сборки отчета о покрытии кода -->
 		<profile>
 			<id>coverage</id>
 			<build>

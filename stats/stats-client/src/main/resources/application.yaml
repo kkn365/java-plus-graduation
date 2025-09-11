@@ -1,0 +1,6 @@
+spring:
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss  # Глобальный формат для java.util.Date
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null  # Игнорирует null-поля
