@@ -37,9 +37,9 @@ logging:
   level:
     org:
       springframework:
-        web: DEBUG  # Логирование веб-слоя Spring
+        web: INFO  # Логирование веб-слоя Spring
         http:
-          converter: TRACE  # Подробное логирование HTTP-конвертеров
+          converter: INFO  # Подробное логирование HTTP-конвертеров
         orm:
           jpa: INFO  # Логирование операций JPA
           jpa.JpaTransactionManager: INFO  # Логирование транзакций JPA

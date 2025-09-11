@@ -22,7 +22,8 @@
         <!-- Spring Cloud Gateway: основной компонент для реализации API Gateway -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-gateway</artifactId>
+            <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
+            <version>4.3.0</version>
         </dependency>
 
         <!-- Actuator: для мониторинга и управления приложением -->

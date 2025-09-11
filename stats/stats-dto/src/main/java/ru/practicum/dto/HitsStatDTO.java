@@ -10,6 +10,11 @@ import lombok.Setter;
 import lombok.ToString;
 import ru.practicum.dto.validator.ValidEndpoint;
 
+/**
+ * DTO для представления статистики просмотров (hits).
+ * <p>
+ * Содержит данные о приложении, URI и количестве просмотров.
+ */
 @Setter
 @Getter
 @Builder
@@ -18,13 +23,25 @@ import ru.practicum.dto.validator.ValidEndpoint;
 @ToString
 public class HitsStatDTO {
 
-    @NotBlank
+    /**
+     * Название приложения, к которому относится статистика.
+     * Обязательное поле, не может быть пустым.
+     */
+    @NotBlank(message = "Название приложения не может быть пустым")
     private String app;
 
-    @NotNull
+    /**
+     * URI, по которому был совершён запрос.
+     * Обязательное поле, должно соответствовать правилам валидации эндпоинта.
+     */
+    @NotNull(message = "URI не может быть null")
     @ValidEndpoint
     private String uri;
 
-    @NotNull
+    /**
+     * Количество просмотров (или уникальных IP-адресов) для данного URI.
+     * Обязательное поле.
+     */
+    @NotNull(message = "Количество просмотров не может быть null")
     private Long hits;
 }

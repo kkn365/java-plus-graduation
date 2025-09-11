@@ -15,6 +15,11 @@ import ru.practicum.dto.validator.ValidIpAddress;
 
 import java.time.LocalDateTime;
 
+/**
+ * DTO для создания новой записи просмотра (hit).
+ * <p>
+ * Содержит данные о приложении, URI, IP-адресе и времени запроса.
+ */
 @Setter
 @Getter
 @Builder
@@ -23,17 +28,34 @@ import java.time.LocalDateTime;
 @ToString
 public class CreateHitDTO {
 
-    @NotBlank
+    /**
+     * Название приложения, которое было просмотрено.
+     * Обязательное поле, не может быть пустым.
+     */
+    @NotBlank(message = "Название приложения не может быть пустым")
     private String app;
 
-    @NotNull
+    /**
+     * URI, который был посещён.
+     * Обязательное поле, должно соответствовать правилам валидации эндпоинта.
+     */
+    @NotNull(message = "URI не может быть null")
     @ValidEndpoint
     private String uri;
 
+    /**
+     * IP-адрес пользователя, совершившего запрос.
+     * Обязательное поле, должно соответствовать формату IPv4/IPv6.
+     */
+    @NotNull(message = "IP-адрес не может быть null")
     @ValidIpAddress
     private String ip;
 
+    /**
+     * Дата и время, когда произошёл просмотр.
+     * Обязательное поле, формат: yyyy-MM-dd HH:mm:ss.
+     */
     @JsonFormat(shape = Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
-    @NotNull(message = "Date and time are required")
+    @NotNull(message = "Дата и время не могут быть null")
     private LocalDateTime timestamp;
 }

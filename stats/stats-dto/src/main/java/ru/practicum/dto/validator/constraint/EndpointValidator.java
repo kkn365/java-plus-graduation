@@ -6,11 +6,15 @@ import ru.practicum.dto.validator.ValidEndpoint;
 
 import java.util.regex.Pattern;
 
-
+/**
+ * Валидатор для проверки корректности URI эндпоинта.
+ */
 public class EndpointValidator implements ConstraintValidator<ValidEndpoint, String> {
 
     private static final Pattern ENDPOINT_PATTERN =
-            Pattern.compile("^/[a-zA-Z0-9/-]+(?:/[a-zA-Z0-9/-]+)*(?:[?][a-zA-Z0-9]+(?:=[a-zA-Z0-9,&]+)*(?:&[a-zA-Z0-9]+(?:=[a-zA-Z0-9,&]+)*)*)?$");
+            Pattern.compile("^/[a-zA-Z0-9/-]+(?:/[a-zA-Z0-9/-]+)*" +
+                            "(?:[?][a-zA-Z0-9]+(?:=[a-zA-Z0-9,&]+)*" +
+                            "(?:&[a-zA-Z0-9]+(?:=[a-zA-Z0-9,&]+)*)*)?$");
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
