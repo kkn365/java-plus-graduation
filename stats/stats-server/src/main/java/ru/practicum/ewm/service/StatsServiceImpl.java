@@ -3,7 +3,7 @@ package ru.practicum.ewm.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.practicum.dto.HitsStatDTO;
-import ru.practicum.ewm.exception.model.StartAfterEndException;
+import ru.practicum.core.api.exception.StartAfterEndException;
 import ru.practicum.ewm.repository.HitsRepository;
 
 import java.time.LocalDateTime;

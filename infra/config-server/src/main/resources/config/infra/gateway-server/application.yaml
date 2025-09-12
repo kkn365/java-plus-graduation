@@ -11,32 +11,39 @@ spring:
       enabled: always
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
-      routes:
-        - id: main-service
-          uri: lb://main-service
-          predicates:
-            - Path=/categories/**, /admin/**, /users/**, /events/**, /compilations/**
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: true
+              lower-case-service-id: true
+          routes:
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/admin/users/**
 
-        - id: stats-server
-          uri: lb://stats-server
-          predicates:
-            - Path=/hit/**, /stats/**
+            - id: main-service
+              uri: lb://main-service
+              predicates:
+                - Path=/admin/categories/**, /admin/comments/**, /admin/compilations/**, /admin/events/**, /compilations/**, /categories/**, /events/**, /users/**
+
+            - id: stats-server
+              uri: lb://stats-server
+              predicates:
+                - Path=/hit/**, /stats/**
 
 logging:
   level:
-    org.springframework.cloud.gateway: INFO
-    org.springframework.http.server.reactive: INFO
-    reactor.netty: INFO
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.http.server.reactive: DEBUG
+    reactor.netty: DEBUG
 
 management:
   endpoints:
     web:
       exposure:
-        include: info
+        include: info, health
   info:
     env:
       enabled: true

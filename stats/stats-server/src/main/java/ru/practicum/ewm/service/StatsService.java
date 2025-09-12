@@ -1,7 +1,7 @@
 package ru.practicum.ewm.service;
 
 import ru.practicum.dto.HitsStatDTO;
-import ru.practicum.ewm.exception.model.StartAfterEndException;
+import ru.practicum.core.api.exception.StartAfterEndException;
 
 import java.time.LocalDateTime;
 import java.util.List;
