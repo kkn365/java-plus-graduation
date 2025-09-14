@@ -15,7 +15,7 @@ import java.util.List;
  * <p>
  * Обеспечивает получение информации о пользователях по их идентификаторам.
  */
-@FeignClient(name = "user-service", path = "/internal/user")
+@FeignClient(name = "user-service", path = "/internal/user", fallback = UserClientFallback.class)
 public interface UserClient {
 
     /**

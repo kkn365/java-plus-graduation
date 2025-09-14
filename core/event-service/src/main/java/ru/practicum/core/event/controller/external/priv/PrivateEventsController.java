@@ -1,6 +1,7 @@
 package ru.practicum.core.event.controller.external.priv;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -13,8 +14,7 @@ import ru.practicum.core.event.service.api.EventService;
 
 import java.util.List;
 
-import static ru.practicum.core.api.util.constants.PaginationConstants.DEFAULT_FROM;
-import static ru.practicum.core.api.util.constants.PaginationConstants.DEFAULT_SIZE;
+import static ru.practicum.core.api.util.constants.PaginationConstants.*;
 
 /**
  * Контроллер для работы с событиями, доступными только авторизованному пользователю.
@@ -40,8 +40,8 @@ public class PrivateEventsController {
     @GetMapping("/{userId}/events")
     public ResponseEntity<List<EventDto>> getEvents(
             @PathVariable Long userId,
-            @RequestParam(defaultValue = DEFAULT_FROM) int from,
-            @RequestParam(defaultValue = DEFAULT_SIZE) int size
+            @RequestParam(defaultValue = DEFAULT_FROM) @Min(value = 0, message = FROM_VALUE_ERROR) int from,
+            @RequestParam(defaultValue = DEFAULT_SIZE) @Min(value = 1, message = SIZE_VALUE_ERROR) int size
     ) {
         log.info("GET /users/{}/events?from={}&size={}", userId, from, size);
         List<EventDto> events = eventService.findAllByParams(userId, from, size);

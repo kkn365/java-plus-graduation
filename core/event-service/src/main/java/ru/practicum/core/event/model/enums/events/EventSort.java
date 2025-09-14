@@ -1,11 +1,14 @@
 package ru.practicum.core.event.model.enums.events;
 
+import lombok.Getter;
+
 /**
  * Перечисление для определения критериев сортировки событий.
  * <p>
  * Используется в методах получения событий для указания порядка сортировки результата.
  */
-public enum EventSortEnum {
+@Getter
+public enum EventSort {
     /**
      * Сортировка по дате события (по возрастанию).
      * <p>
@@ -20,18 +23,17 @@ public enum EventSortEnum {
      */
     VIEWS("views");
 
+    /**
+     * Поле, которое будет использоваться как имя поля для сортировки.
+     */
     private final String sortField;
 
-    EventSortEnum(String sortField) {
-        this.sortField = sortField;
-    }
-
     /**
-     * Возвращает строковое представление поля для сортировки.
+     * Конструктор перечисления.
      *
-     * @return имя поля, используемое в запросах к БД или API
+     * @param sortField строковое представление имени поля для сортировки
      */
-    public String getSortField() {
-        return sortField;
+    EventSort(String sortField) {
+        this.sortField = sortField;
     }
 }

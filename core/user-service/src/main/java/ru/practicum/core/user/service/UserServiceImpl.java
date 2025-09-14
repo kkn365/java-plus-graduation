@@ -30,7 +30,6 @@ public class UserServiceImpl implements UserService {
 
     private static final String EMAIL_ALREADY_EXISTS = "Пользователь с email %s уже существует";
     private static final String USER_NOT_FOUND = "Пользователь с ID %d не найден";
-    private static final String INVALID_PAGINATION_PARAMS = "Параметры from и size должны быть положительными числами";
 
     /**
      * Создаёт нового пользователя на основе данных из запроса.
@@ -56,23 +55,18 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * Возвращает список пользователей по списку идентификаторов или всех пользователей с пагинацией.
+     * Метод получения списка пользователей по списку идентификаторов или с пагинацией.
      * <p>
-     * Если список идентификаторов не пустой, возвращаются только указанные пользователи.
-     * Если список пустой или null, возвращаются все пользователи с учётом параметров пагинации.
+     * Если передан список идентификаторов (ids), возвращаются пользователи с указанными ID.
+     * Если ids пустой или не указан, метод возвращает список пользователей с учётом параметров пагинации from и size.
      *
-     * @param ids   список идентификаторов пользователей
-     * @param from  начальная позиция (смещение)
-     * @param size  количество элементов на странице
-     * @return список DTO пользователей
-     * @throws IllegalArgumentException если параметры пагинации некорректны
+     * @param ids   список идентификаторов пользователей, которые необходимо получить
+     * @param from  количество пропускаемых записей (смещение)
+     * @param size  количество возвращаемых записей на странице
+     * @return      список DTO пользователей, соответствующих условиям запроса
      */
     @Override
     public List<UserDto> getUsers(List<Long> ids, int from, int size) {
-        if (from < 0 || size <= 0) {
-            throw new IllegalArgumentException(INVALID_PAGINATION_PARAMS);
-        }
-
         if (ids != null && !ids.isEmpty()) {
             log.info("Запрос пользователей по идентификаторам: {}", ids);
             return userRepository.findAllById(ids).stream()
@@ -81,7 +75,7 @@ public class UserServiceImpl implements UserService {
         }
 
         int pageNumber = Math.floorDiv(from, size);
-        Pageable pageable = PageRequest.of(pageNumber, size);
+        Pageable pageable = PageRequest.of(from / size, size);
         Page<User> userPage = userRepository.findAll(pageable);
 
         log.info("Запрошена страница {} с размером {}", pageNumber, size);

@@ -1,6 +1,7 @@
 package ru.practicum.core.event.controller.external.admin;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -11,8 +12,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static ru.practicum.core.api.util.constants.DateTimeFormatConstants.DATE_TIME_FORMAT;
-import static ru.practicum.core.api.util.constants.PaginationConstants.DEFAULT_FROM;
-import static ru.practicum.core.api.util.constants.PaginationConstants.DEFAULT_SIZE;
+import static ru.practicum.core.api.util.constants.PaginationConstants.*;
 
 import ru.practicum.core.event.dto.events.AdminEventParams;
 import ru.practicum.core.api.internal.event.dto.EventDto;
@@ -55,8 +55,8 @@ public class AdminEventsController {
             @RequestParam(required = false) List<Long> categories,
             @RequestParam(required = false) @DateTimeFormat(pattern = DATE_TIME_FORMAT) LocalDateTime rangeStart,
             @RequestParam(required = false) @DateTimeFormat(pattern = DATE_TIME_FORMAT) LocalDateTime rangeEnd,
-            @RequestParam(defaultValue = DEFAULT_FROM) int from,
-            @RequestParam(defaultValue = DEFAULT_SIZE) int size
+            @RequestParam(defaultValue = DEFAULT_FROM) @Min(value = 0, message = FROM_VALUE_ERROR) int from,
+            @RequestParam(defaultValue = DEFAULT_SIZE) @Min(value = 1, message = SIZE_VALUE_ERROR) int size
     ) {
         log.info("GET /admin/events?users={}&states={}&categories={}&rangeStart={}&rangeEnd={}&from={}&size={}",
                 users, states, categories, rangeStart, rangeEnd, from, size);

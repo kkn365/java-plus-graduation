@@ -46,6 +46,7 @@ public class CommentServiceImpl implements CommentService {
     private static final String COMMENT_NOT_FOUND_MESSAGE = "Комментарий с ID=%d не найден";
     private static final String USER_NOT_PARTICIPANT_MESSAGE = "Пользователь с ID=%d не участвует в событии с ID=%d";
     private static final String COMMENT_EXIST_MESSAGE = "Пользователь с ID=%d уже оставил комментарий к событию с ID=%d";
+    private static final String COMMENT_STATUS_ALREADY_SET_MESSAGE = "Статус комментария с ID=%d уже установлен на %s";
 
     private final CommentMapper commentMapper;
     private final CommentRepository commentRepository;
@@ -77,8 +78,6 @@ public class CommentServiceImpl implements CommentService {
      */
     @Override
     public CommentDto findComment(long eventId, long commentId) {
-        eventService.findEventById(eventId);
-
         return commentMapper.toDto(
                 commentRepository.findByIdAndStatus(commentId, CommentStatus.APPROVED)
                         .orElseThrow(notFoundException(COMMENT_NOT_FOUND_MESSAGE, commentId))
@@ -100,11 +99,11 @@ public class CommentServiceImpl implements CommentService {
     /**
      * Метод создания нового комментария.
      *
-     * @param userId       идентификатор пользователя, оставляющего комментарий
-     * @param eventId      идентификатор события, к которому оставляется комментарий
+     * @param userId        идентификатор пользователя, оставляющего комментарий
+     * @param eventId       идентификатор события, к которому оставляется комментарий
      * @param newCommentDto DTO с текстом комментария
      * @return DTO созданного комментария
-     * @throws NotFoundException        если пользователь или событие не найдены
+     * @throws NotFoundException         если пользователь или событие не найдены
      * @throws DataAlreadyExistException если пользователь уже оставил комментарий на это событие
      */
     @Override
@@ -155,19 +154,28 @@ public class CommentServiceImpl implements CommentService {
     }
 
     /**
-     * Метод изменения статуса комментария.
+     * Метод обновления статуса комментария.
+     * <p>
+     * Позволяет изменить текущий статус комментария на новый. Если новый статус совпадает с текущим,
+     * генерируется исключение {@link DataAlreadyExistException}.
      *
-     * @param commentId идентификатор комментария
-     * @param status    новый статус комментария
+     * @param commentId идентификатор комментария, для которого необходимо обновить статус
+     * @param status    новый статус комментария (например: APPROVED, REJECTED, PENDING)
      * @return DTO обновлённого комментария
-     * @throws NotFoundException если комментарий не найден
+     * @throws DataAlreadyExistException если комментарий уже имеет указанный статус
+     * @throws NotFoundException         если комментарий с указанным ID не найден
      */
     @Override
     public CommentDto patchCommentStatus(long commentId, CommentStatus status) {
         Comment comment = getCommentById(commentId);
 
+        // Проверка, что комментарий уже имеет указанный статус
+        if (comment.getStatus().equals(status)) {
+            throw new DataAlreadyExistException(COMMENT_STATUS_ALREADY_SET_MESSAGE, commentId, status);
+        }
+
         comment.setStatus(status);
-        if (status == CommentStatus.APPROVED) {
+        if (CommentStatus.APPROVED.equals(status)) {
             comment.setPublishedDate(LocalDateTime.now());
         }
         comment.setUpdatedDate(LocalDateTime.now());
@@ -213,9 +221,9 @@ public class CommentServiceImpl implements CommentService {
     /**
      * Метод проверки корректности временного диапазона: конечная дата должна быть позже начальной.
      *
-     * @param start  начальная дата
-     * @param end    конечная дата
-     * @param type   тип даты (например, createdDate, publishedDate)
+     * @param start начальная дата
+     * @param end   конечная дата
+     * @param type  тип даты (например, createdDate, publishedDate)
      * @throws ValidationException если конечная дата раньше начальной
      */
     private void validateDateRanges(LocalDateTime start, LocalDateTime end, String type) {

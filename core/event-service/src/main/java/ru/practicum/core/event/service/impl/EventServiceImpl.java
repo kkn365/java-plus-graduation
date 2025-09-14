@@ -25,7 +25,7 @@ import ru.practicum.core.event.dto.events.UserEventParams;
 import ru.practicum.core.event.mapper.EventMapper;
 import ru.practicum.core.event.model.Category;
 import ru.practicum.core.event.model.Event;
-import ru.practicum.core.event.model.enums.events.EventSortEnum;
+import ru.practicum.core.event.model.enums.events.EventSort;
 import ru.practicum.core.event.model.enums.events.EventStateAction;
 import ru.practicum.core.event.repository.EventRepository;
 import ru.practicum.core.event.service.api.CategoryService;
@@ -42,7 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static ru.practicum.core.event.model.enums.events.EventSortEnum.EVENT_DATE;
+import static ru.practicum.core.event.model.enums.events.EventSort.EVENT_DATE;
 import static ru.practicum.core.event.repository.EventRepository.AdminEventSpec.withAdminParams;
 import static ru.practicum.core.event.repository.EventRepository.UserEventSpec.withUserParams;
 
@@ -61,7 +61,6 @@ public class EventServiceImpl implements EventService {
     private static final String EARLY_START_ERROR_MESSAGE = "Дата начала события не может быть раньше чем через один час после публикации";
     private static final String USER_NOT_FOUND_ERROR_MESSAGE = "Пользователь с ID=%d не найден";
     private static final String USERS_NOT_FOUND_ERROR_MESSAGE = "Пользователи с ID=%s не найдены";
-    private static final String PAGINATION_ERROR_MESSAGE = "Некорректные параметры пагинации";
     private static final String RANGE_ERROR_MESSAGE = "Некорректный диапазон";
 
     private final EventMapper eventMapper;
@@ -118,10 +117,10 @@ public class EventServiceImpl implements EventService {
     /**
      * Метод обновления события пользователем-инициатором.
      *
-     * @param eventId      идентификатор события, которое требуется обновить
-     * @param newEventDto  DTO с данными, которые необходимо изменить
-     * @param userId       идентификатор пользователя, инициирующего обновление события
-     * @return             DTO обновлённого события
+     * @param eventId     идентификатор события, которое требуется обновить
+     * @param newEventDto DTO с данными, которые необходимо изменить
+     * @param userId      идентификатор пользователя, инициирующего обновление события
+     * @return DTO обновлённого события
      * @throws ConflictException если событие не находится в состоянии ОЖИДАНИЕ или ОТМЕНЕНО
      * @throws NotFoundException если событие или пользователь не найдены
      */
@@ -140,7 +139,7 @@ public class EventServiceImpl implements EventService {
     /**
      * Метод обновления события администратором.
      *
-     * @param eventId идентификатор события, которое необходимо обновить
+     * @param eventId     идентификатор события, которое необходимо обновить
      * @param newEventDto DTO с данными для обновления события
      * @return DTO обновлённого события
      * @throws ConflictException если действие над состоянием события невозможно
@@ -167,7 +166,7 @@ public class EventServiceImpl implements EventService {
      * @param size   количество возвращаемых записей
      * @return список DTO событий, инициированных пользователем
      * @throws ValidationException если параметры пагинации некорректны
-     * @throws NotFoundException если пользователь не найден
+     * @throws NotFoundException   если пользователь не найден
      */
     @Override
     public List<EventDto> findAllByParams(Long userId, Integer from, Integer size) {
@@ -186,11 +185,11 @@ public class EventServiceImpl implements EventService {
     /**
      * Метод получения информации о событии, инициированном конкретным пользователем.
      *
-     * @param userId   идентификатор пользователя, который является инициатором события
-     * @param eventId  идентификатор события, информацию о котором требуется получить
-     * @return         DTO события с дополнительной информацией
+     * @param userId  идентификатор пользователя, который является инициатором события
+     * @param eventId идентификатор события, информацию о котором требуется получить
+     * @return DTO события с дополнительной информацией
      * @throws NotFoundException если событие или пользователь не найдены
-     * @throws ConflictException       если событие не принадлежит указанному пользователю
+     * @throws ConflictException если событие не принадлежит указанному пользователю
      */
     @Override
     public EventDto findUserEvent(Long userId, Long eventId) {
@@ -282,7 +281,7 @@ public class EventServiceImpl implements EventService {
 
         // Проверяем наличие и значение параметра сортировки
         if (userEventParams.getSort() != null
-            && userEventParams.getSort().equals(EventSortEnum.VIEWS)) {
+                && userEventParams.getSort().equals(EventSort.VIEWS)) {
             log.debug("Применена сортировка по количеству просмотров");
             eventDtos.sort(Comparator.comparing(EventDto::getViews).reversed());
         }
@@ -331,7 +330,7 @@ public class EventServiceImpl implements EventService {
     /**
      * Метод получения DTO события по его идентификатору.
      * <p>
-     *     Используется микросервисами.
+     * Используется микросервисами.
      *
      * @param eventId идентификатор события, для которого необходимо получить DTO
      * @return DTO события с дополнительной информацией (пользователем и статистикой)
@@ -346,7 +345,7 @@ public class EventServiceImpl implements EventService {
     /**
      * Метод получения списка событий, инициированных конкретным пользователем.
      * <p>
-     *     Используется микросервисами.
+     * Используется микросервисами.
      *
      * @param initiatorId идентификатор пользователя-инициатора событий
      * @return список DTO событий с дополнительной информацией (пользователями и статистикой)
@@ -540,7 +539,7 @@ public class EventServiceImpl implements EventService {
      * Выполняет валидацию на основе текущего состояния события и запрашиваемого действия.
      *
      * @param action действие над состоянием события (PUBLISH_EVENT, REJECT_EVENT)
-     * @param event событие, состояние которого необходимо изменить
+     * @param event  событие, состояние которого необходимо изменить
      * @throws ConflictException если действие невозможно из-за текущего состояния события или неверного типа действия
      */
     private void validateAdminStateAction(EventStateAction action, Event event) {
@@ -687,9 +686,9 @@ public class EventServiceImpl implements EventService {
      * Метод определяет самую позднюю дату события из списка событий.
      * Используется для установления временного диапазона при запросе статистики просмотров.
      *
-     * @param events               список событий, для которых определяется максимальная дата события
-     * @param earliestCreatedOn    минимальная дата создания события (используется как fallback)
-     * @return                     самая поздняя дата события или fallback-значение, если даты отсутствуют
+     * @param events            список событий, для которых определяется максимальная дата события
+     * @param earliestCreatedOn минимальная дата создания события (используется как fallback)
+     * @return самая поздняя дата события или fallback-значение, если даты отсутствуют
      */
     private LocalDateTime getLatestEventDate(List<Event> events, LocalDateTime earliestCreatedOn) {
         return events.stream()
@@ -755,18 +754,10 @@ public class EventServiceImpl implements EventService {
      * @param from параметр, указывающий начальную позицию (сколько записей пропустить)
      * @param size количество возвращаемых записей на странице
      * @return объект PageRequest, настроенный на пагинацию и сортировку по дате события по возрастанию
-     * @throws ValidationException если параметры from или size некорректны
      */
     private PageRequest createPageRequest(int from, int size) {
-        // Проверяем параметры пагинации
-        if (from < 0 || size <= 0) {
-            throw new ValidationException(PAGINATION_ERROR_MESSAGE);
-        }
-
-        int page = from / size;
-
         return PageRequest.of(
-                page,
+                from / size,
                 size,
                 Sort.by(EVENT_DATE.getSortField()).ascending()
         );

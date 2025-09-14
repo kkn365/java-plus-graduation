@@ -1,17 +1,17 @@
 package ru.practicum.core.event.controller.external.pub;
 
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.core.api.internal.event.dto.CategoryDto;
 import ru.practicum.core.event.service.api.CategoryService;
 
-import static ru.practicum.core.api.util.constants.PaginationConstants.DEFAULT_FROM;
-import static ru.practicum.core.api.util.constants.PaginationConstants.DEFAULT_SIZE;
-
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+
+import static ru.practicum.core.api.util.constants.PaginationConstants.*;
 
 /**
  * Контроллер для публичного доступа к категориям событий.
@@ -35,8 +35,8 @@ public class PublicCategoriesController {
      */
     @GetMapping
     public ResponseEntity<List<CategoryDto>> getCategories(
-            @RequestParam(defaultValue = DEFAULT_FROM) int from,
-            @RequestParam(defaultValue = DEFAULT_SIZE) int size
+            @RequestParam(defaultValue = DEFAULT_FROM) @Min(value = 0, message = FROM_VALUE_ERROR) int from,
+            @RequestParam(defaultValue = DEFAULT_SIZE) @Min(value = 1, message = SIZE_VALUE_ERROR) int size
     ) {
         log.info("GET /categories?from={}&size={}", from, size);
         List<CategoryDto> categories = categoryService.getCategories(from, size);

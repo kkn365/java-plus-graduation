@@ -37,8 +37,7 @@ public class CustomErrorDecoder implements ErrorDecoder {
                         "Internal Server Error [status=500, method=" + methodKey + ", response=" + responseBody + "]");
                 default -> {
                     // Для других статусов используем дефолтный декодер, но добавляем контекст
-                    Exception defaultException = defaultErrorDecoder.decode(methodKey, response);
-                    yield defaultException;
+                    yield defaultErrorDecoder.decode(methodKey, response);
                 }
             };
         } else {

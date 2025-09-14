@@ -1,9 +1,7 @@
 package ru.practicum.core.event.service.impl;
 
-import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -16,6 +14,7 @@ import ru.practicum.core.event.repository.CategoryRepository;
 import ru.practicum.core.api.exception.DataAlreadyExistException;
 import ru.practicum.core.api.exception.NotFoundException;
 import ru.practicum.core.api.exception.RelatedDataDeleteException;
+import ru.practicum.core.event.repository.EventRepository;
 import ru.practicum.core.event.service.api.CategoryService;
 
 import java.util.List;
@@ -31,55 +30,63 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
 
-    private static final String CREATION_ERROR_MESSAGE = "Категория с именем=%s уже существует в базе данных";
+    private static final String CATEGORY_EXISTS_ERROR_MESSAGE = "Категория с именем=%s уже существует в базе данных";
     private static final String DELETION_ERROR_MESSAGE = "Категория с ID=%d связана с другими сущностями и не может быть удалена";
     private static final String GET_ERROR_MESSAGE = "Категория с ID=%d не найдена в базе данных";
-    private static final String PAGINATION_ERROR_MESSAGE = "Некорректные параметры пагинации";
 
     private final CategoryRepository categoryRepository;
+    private final EventRepository eventRepository;
     private final CategoryMapper categoryMapper;
 
     /**
      * Метод создания новой категории.
+     * <p>
+     * Выполняет проверку уникальности имени категории в базе данных. Если категория с таким именем уже существует,
+     * выбрасывается исключение {@link DataAlreadyExistException}. В противном случае создаётся новая категория,
+     * сохраняется в репозиторий, и логируется её идентификатор.
      *
-     * @param newCategoryDto DTO с данными новой категории
-     * @return DTO созданной категории
-     * @throws DataAlreadyExistException если категория с таким именем уже существует
+     * @param newCategoryDto объект DTO с данными новой категории (имя категории)
+     * @return объект DTO созданной категории
+     * @throws DataAlreadyExistException если категория с указанным именем уже существует
      */
     @Override
     public CategoryDto createCategory(NewCategoryDto newCategoryDto) {
+        checkCategoryExistenceByNameOrThrow(newCategoryDto.getName());
+
         Category newCategory = categoryMapper.toModel(newCategoryDto);
-        try {
-            Category createdCategory = categoryRepository.save(newCategory);
-            return categoryMapper.toDto(createdCategory);
-        } catch (DataIntegrityViolationException e) {
-            final String error = String.format(CREATION_ERROR_MESSAGE, newCategoryDto.getName());
-            log.warn(error);
-            throw new DataAlreadyExistException(error);
-        }
+        Category createdCategory = categoryRepository.save(newCategory);
+
+        log.info("Создана новая категория с ID={}", createdCategory.getId());
+        return categoryMapper.toDto(createdCategory);
     }
 
     /**
-     * Метод обновления информации о категории.
+     * Метод обновления информации о категории по её идентификатору.
+     * <p>
+     * Обновляет имя категории, если оно отличается от текущего. Если новое имя совпадает с текущим,
+     * возвращается DTO текущей категории без изменений. В противном случае изменения сохраняются в репозиторий.
      *
-     * @param categoryId   идентификатор категории, которую необходимо обновить
-     * @param categoryDto  DTO с новыми данными категории
-     * @return DTO обновлённой категории
-     * @throws DataAlreadyExistException если категория с таким именем уже существует
-     * @throws NotFoundException         если категория с указанным ID не найдена
+     * @param categoryId  идентификатор категории, которую необходимо обновить
+     * @param categoryDto объект DTO с новыми данными категории (в данном случае — новое имя)
+     * @return объект DTO обновлённой категории
+     * @throws NotFoundException если категория с указанным ID не найдена
      */
     @Override
     public CategoryDto updateCategory(Long categoryId, CategoryDto categoryDto) {
+        // Проверяем, что категория с указанным ID существует
         Category currentCategory = getCategoryById(categoryId);
-        currentCategory.setName(categoryDto.getName());
-        try {
-            Category updatedCategory = categoryRepository.save(currentCategory);
-            return categoryMapper.toDto(updatedCategory);
-        } catch (DataIntegrityViolationException e) {
-            final String error = String.format(CREATION_ERROR_MESSAGE, categoryDto.getName());
-            log.warn(error);
-            throw new DataAlreadyExistException(error);
+        // Проверяем, что новое имя категории не совпадает с текущим
+        if (currentCategory.getName().equals(categoryDto.getName())) {
+            // Если имена совпадают, возвращаем DTO текущей категории
+            return categoryMapper.toDto(currentCategory);
         }
+        // Обновляем название категории
+        currentCategory.setName(categoryDto.getName());
+        // Сохраняем обновлённую категорию в репозиторий
+        Category updatedCategory = categoryRepository.save(currentCategory);
+
+        log.info("Название категории с ID={} изменено на: {}", updatedCategory.getId(), updatedCategory.getName());
+        return categoryMapper.toDto(updatedCategory);
     }
 
     /**
@@ -91,12 +98,16 @@ public class CategoryServiceImpl implements CategoryService {
      */
     @Override
     public void deleteCategory(Long categoryId) {
-        try {
+        // Если категория не найдена, генерируется исключение NotFoundException
+        if (categoryRepository.existsById(categoryId)) {
+            // Проверяем, связана ли категория с другими сущностями
+            if (eventRepository.existsByCategoryId(categoryId)) {
+                final String error = String.format(DELETION_ERROR_MESSAGE, categoryId);
+                log.warn(error);
+                throw new RelatedDataDeleteException(error);
+            }
+            // Удаляем категорию
             categoryRepository.deleteById(categoryId);
-        } catch (DataIntegrityViolationException e) {
-            final String error = String.format(DELETION_ERROR_MESSAGE, categoryId);
-            log.warn(error);
-            throw new RelatedDataDeleteException(error);
         }
     }
 
@@ -115,22 +126,16 @@ public class CategoryServiceImpl implements CategoryService {
 
     /**
      * Метод получения списка категорий с пагинацией.
+     * <p>
+     * Возвращает список DTO категорий, ограниченный по количеству и смещённый на заданное количество записей.
      *
      * @param from количество пропускаемых записей (смещение)
      * @param size количество возвращаемых записей на странице
      * @return список DTO категорий
-     * @throws ValidationException если параметры пагинации некорректны
      */
     @Override
     public List<CategoryDto> getCategories(Integer from, Integer size) {
-        // Проверяем параметры пагинации
-        if (from < 0 || size <= 0) {
-            throw new ValidationException(PAGINATION_ERROR_MESSAGE);
-        }
-
-        int page = from / size;
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
+        Pageable pageable = PageRequest.of(from / size, size, Sort.by("id").ascending());
 
         return categoryRepository.findAll(pageable).stream()
                 .map(categoryMapper::toDto)
@@ -147,5 +152,21 @@ public class CategoryServiceImpl implements CategoryService {
     public Category getCategoryById(Long categoryId) {
         return categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new NotFoundException(String.format(GET_ERROR_MESSAGE, categoryId)));
+    }
+
+    /**
+     * Проверяет, существует ли категория с указанным именем в базе данных.
+     * <p>
+     * Если категория с таким именем уже существует, генерируется исключение {@link DataAlreadyExistException}.
+     *
+     * @param name имя категории, которую необходимо проверить
+     * @throws DataAlreadyExistException если категория с указанным именем уже существует
+     */
+    private void checkCategoryExistenceByNameOrThrow(String name) {
+        if (categoryRepository.existsByName(name)) {
+            final String error = String.format(CATEGORY_EXISTS_ERROR_MESSAGE, name);
+            log.warn(error);
+            throw new DataAlreadyExistException(error);
+        }
     }
 }

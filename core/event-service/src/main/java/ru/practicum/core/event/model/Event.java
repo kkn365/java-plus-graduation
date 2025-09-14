@@ -2,9 +2,11 @@ package ru.practicum.core.event.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.proxy.HibernateProxy;
 import ru.practicum.core.api.util.enums.EventState;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /**
  * Модель события.
@@ -14,7 +16,9 @@ import java.time.LocalDateTime;
 
 @Entity
 @Builder
-@Data
+@Getter
+@Setter
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "events", schema = "public")
@@ -115,4 +119,20 @@ public class Event {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EventState state = EventState.PENDING;
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null) return false;
+        Class<?> oEffectiveClass = o instanceof HibernateProxy proxy ? proxy.getHibernateLazyInitializer().getPersistentClass() : o.getClass();
+        Class<?> thisEffectiveClass = this instanceof HibernateProxy proxy ? proxy.getHibernateLazyInitializer().getPersistentClass() : this.getClass();
+        if (thisEffectiveClass != oEffectiveClass) return false;
+        Event event = (Event) o;
+        return getId() != null && Objects.equals(getId(), event.getId());
+    }
+
+    @Override
+    public final int hashCode() {
+        return this instanceof HibernateProxy proxy ? proxy.getHibernateLazyInitializer().getPersistentClass().hashCode() : getClass().hashCode();
+    }
 }

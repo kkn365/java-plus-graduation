@@ -9,7 +9,12 @@ import org.springframework.context.annotation.ComponentScan;
 @EnableDiscoveryClient
 @SpringBootApplication
 @ConfigurationPropertiesScan
-@ComponentScan(basePackages = {"ru.practicum", "ru.practicum.core.api"})
+@ComponentScan(basePackages = {
+        "ru.practicum.stats.server",
+        "ru.practicum.stats.dto",
+        "ru.practicum.stats.client",
+        "ru.practicum.core.api"
+})
 public class StatsServer {
     public static void main(String[] args) {
         SpringApplication.run(StatsServer.class, args);

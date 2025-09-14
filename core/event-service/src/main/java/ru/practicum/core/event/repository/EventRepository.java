@@ -48,6 +48,14 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
     List<Event> findAllByInitiatorId(Long initiatorId);
 
     /**
+     * Проверяет, существует ли хотя бы одно событие, связанное с указанной категорией.
+     *
+     * @param categoryId идентификатор категории, для которой проверяется наличие связанных событий
+     * @return true, если есть события, связанные с данной категорией; false — в противном случае
+     */
+    boolean existsByCategoryId(Long categoryId);
+
+    /**
      * Спецификация для фильтра событий администратора.
      */
     class AdminEventSpec {

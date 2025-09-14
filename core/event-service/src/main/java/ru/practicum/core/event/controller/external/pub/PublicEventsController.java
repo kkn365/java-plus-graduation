@@ -1,6 +1,7 @@
 package ru.practicum.core.event.controller.external.pub;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,15 +10,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.core.api.internal.event.dto.EventDto;
 import ru.practicum.core.event.dto.events.UserEventParams;
-import ru.practicum.core.event.model.enums.events.EventSortEnum;
+import ru.practicum.core.event.model.enums.events.EventSort;
 import ru.practicum.core.event.service.api.EventService;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 import static ru.practicum.core.api.util.constants.DateTimeFormatConstants.DATE_TIME_FORMAT;
-import static ru.practicum.core.api.util.constants.PaginationConstants.DEFAULT_FROM;
-import static ru.practicum.core.api.util.constants.PaginationConstants.DEFAULT_SIZE;
+import static ru.practicum.core.api.util.constants.PaginationConstants.*;
 
 /**
  * Контроллер для публичного доступа к событиям.
@@ -56,9 +56,9 @@ public class PublicEventsController {
             @RequestParam(required = false) Boolean onlyAvailable,
             @RequestParam(required = false) @DateTimeFormat(pattern = DATE_TIME_FORMAT) LocalDateTime rangeStart,
             @RequestParam(required = false) @DateTimeFormat(pattern = DATE_TIME_FORMAT) LocalDateTime rangeEnd,
-            @RequestParam(required = false) EventSortEnum sort,
-            @RequestParam(defaultValue = DEFAULT_FROM) int from,
-            @RequestParam(defaultValue = DEFAULT_SIZE) int size
+            @RequestParam(required = false) EventSort sort,
+            @RequestParam(defaultValue = DEFAULT_FROM) @Min(value = 0, message = FROM_VALUE_ERROR) int from,
+            @RequestParam(defaultValue = DEFAULT_SIZE) @Min(value = 1, message = SIZE_VALUE_ERROR) int size
     ) {
         log.info("GET /events?text={}&categories={}&paid={}&onlyAvailable={}&rangeStart={}&rangeEnd={}&sort={}&from={}&size={}",
                 text, categories, paid, onlyAvailable, rangeStart, rangeEnd, sort, from, size);

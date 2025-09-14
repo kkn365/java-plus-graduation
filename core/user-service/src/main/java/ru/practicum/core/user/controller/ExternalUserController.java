@@ -1,6 +1,7 @@
 package ru.practicum.core.user.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -13,12 +14,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import ru.practicum.core.api.util.constants.PaginationConstants;
 import ru.practicum.core.user.dto.NewUserRequest;
 import ru.practicum.core.user.dto.UserDto;
 import ru.practicum.core.user.service.UserService;
 
 import java.util.List;
+
+import static ru.practicum.core.api.util.constants.PaginationConstants.*;
 
 @Slf4j
 @RestController
@@ -56,8 +58,9 @@ public class ExternalUserController {
     @GetMapping
     public ResponseEntity<List<UserDto>> getUsers(
             @RequestParam(required = false) List<Long> ids,
-            @RequestParam(defaultValue = PaginationConstants.DEFAULT_FROM) int from,
-            @RequestParam(defaultValue = PaginationConstants.DEFAULT_SIZE) int size) {
+            @RequestParam(defaultValue = DEFAULT_FROM) @Min(value = 0, message = FROM_VALUE_ERROR) int from,
+            @RequestParam(defaultValue = DEFAULT_SIZE) @Min(value = 1, message = SIZE_VALUE_ERROR) int size
+    ) {
         log.info("Получен GET-запрос на получение пользователей: ids={}, from={}, size={}", ids, from, size);
         List<UserDto> users = userService.getUsers(ids, from, size);
         log.info("Отправлен список пользователей с размером: {}", users.size());

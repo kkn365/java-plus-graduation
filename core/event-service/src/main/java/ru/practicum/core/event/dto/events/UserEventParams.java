@@ -2,7 +2,7 @@ package ru.practicum.core.event.dto.events;
 
 import lombok.Builder;
 import lombok.Data;
-import ru.practicum.core.event.model.enums.events.EventSortEnum;
+import ru.practicum.core.event.model.enums.events.EventSort;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -56,7 +56,7 @@ public class UserEventParams {
      * Допустимые значения: EVENT_DATE (по дате), VIEWS (по просмотрам).
      */
     @Builder.Default
-    private EventSortEnum sort = EventSortEnum.VIEWS;
+    private EventSort sort = EventSort.VIEWS;
 
     /**
      * Начальная позиция для пагинации (смещение).

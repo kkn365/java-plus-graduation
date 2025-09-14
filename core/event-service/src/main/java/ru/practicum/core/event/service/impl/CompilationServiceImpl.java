@@ -39,7 +39,6 @@ public class CompilationServiceImpl implements CompilationService {
 
     private static final String COMP_NOT_FOUND_MESSAGE = "Подборка с ID=%d не найдена";
     private static final String EVENTS_NOT_FOUND_MESSAGE = "Следующие события не найдены: %s";
-    private static final String PAGINATION_ERROR_MESSAGE = "Некорректные параметры пагинации";
 
     private final CompilationRepository compilationRepository;
     private final EventRepository eventRepository;
@@ -134,10 +133,6 @@ public class CompilationServiceImpl implements CompilationService {
      */
     @Override
     public List<CompilationDto> getAll(Boolean pinned, Integer from, Integer size) {
-        // Проверяем параметры пагинации
-        if (from < 0 || size <= 0) {
-            throw new ValidationException(PAGINATION_ERROR_MESSAGE);
-        }
         int page = from / size;
 
         return (pinned != null)

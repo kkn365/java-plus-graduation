@@ -1,5 +1,6 @@
 package ru.practicum.core.event.controller.external.pub;
 
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -14,8 +15,7 @@ import ru.practicum.core.event.service.api.CompilationService;
 
 import java.util.List;
 
-import static ru.practicum.core.api.util.constants.PaginationConstants.DEFAULT_FROM;
-import static ru.practicum.core.api.util.constants.PaginationConstants.DEFAULT_SIZE;
+import static ru.practicum.core.api.util.constants.PaginationConstants.*;
 
 /**
  * Контроллер для обработки публичных запросов, связанных с подборками событий.
@@ -46,8 +46,9 @@ public class PublicCompilationsController {
     @GetMapping
     public ResponseEntity<List<CompilationDto>> getAll(
             @RequestParam(required = false) Boolean pinned,
-            @RequestParam(defaultValue = DEFAULT_FROM) int from,
-            @RequestParam(defaultValue = DEFAULT_SIZE) int size) {
+            @RequestParam(defaultValue = DEFAULT_FROM) @Min(value = 0, message = FROM_VALUE_ERROR) int from,
+            @RequestParam(defaultValue = DEFAULT_SIZE) @Min(value = 1, message = SIZE_VALUE_ERROR) int size
+    ) {
         log.info("GET /compilations?pinned={}&from={}&size={}", pinned, from, size);
         List<CompilationDto> compilations = compilationService.getAll(pinned, from, size);
         log.info("Возвращено {} подборок", compilations.size());
