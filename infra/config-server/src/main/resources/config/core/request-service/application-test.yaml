@@ -1,0 +1,37 @@
+server:
+  port: 0
+  servlet:
+    encoding:
+      force: true
+      charset: UTF-8
+
+spring:
+  config:
+    activate:
+      on-profile: test  # Активирует эту конфигурацию только при запущенном профиле 'test'
+
+  jpa:
+    hibernate:
+      ddl-auto: update  # Включает автоматическое обновление схемы БД в тестах
+    properties:
+      hibernate:
+        format_sql: true  # Форматирование SQL-запросов в логах для удобства отладки
+
+  datasource:
+    driver-class-name: org.h2.Driver  # Используется вместо deprecated driverClassName
+    url: jdbc:h2:mem:requests_test_db;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH  # H2 в памяти с PostgreSQL-совместимым режимом
+    username: ewm-user-test
+    password: ewm-user-test
+
+logging:
+  level:
+    org:
+      springframework:
+        web: DEBUG  # Логирование HTTP-запросов/ответов
+        http:
+          converter: DEBUG  # Подробное логирование конвертеров HTTP
+        orm:
+          jpa: DEBUG  # Логирование операций JPA
+          jpa.JpaTransactionManager: DEBUG  # Логирование транзакций JPA
+        transaction:
+          TransactionInterceptor: DEBUG  # Логирование Spring Transaction Interceptor

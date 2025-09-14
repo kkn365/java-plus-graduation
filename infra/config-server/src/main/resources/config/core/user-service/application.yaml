@@ -1,8 +1,8 @@
 server:
-  port: 0
+  port: 0  # Используется случайный порт для тестирования в контейнерах
   servlet:
     encoding:
-      force: true
+      force: true  # Принудительное использование UTF-8 для всех запросов/ответов
       charset: UTF-8
 
 spring:
@@ -13,10 +13,10 @@ spring:
     default-property-inclusion: non_null  # Игнорируем null-значения при сериализации JSON
 
   jpa:
-    hibernate.ddl-auto: update  # Автоматически обновляет схему БД при запуске (только для dev/тест)
+    hibernate.ddl-auto: none  # Отключение автоматического управления схемой БД
     properties:
       hibernate:
-        format_sql: true  # Форматирует SQL-запросы в логах для удобства чтения
+        format_sql: false  # Отключаем форматирование SQL-запросов
         connection:
           read_only: false  # База не находится в режиме только для чтения
 
@@ -25,7 +25,7 @@ spring:
       mode: always  # Всегда загружать инициализационные скрипты при старте
 
   datasource:
-    driver-class-name: org.postgresql.Driver  # Используется вместо deprecated driverClassName
+    dataSourceClassName: org.postgresql.ds.PGSimpleDataSource
     url: jdbc:postgresql://localhost:6432/users_db  # URL к локальной БД
     username: ewm-user  # Имя пользователя БД
     password: ewm-user  # Пароль пользователя БД
@@ -34,9 +34,9 @@ logging:
   level:
     org:
       springframework:
-        web: INFO  # Логирование веб-слоя Spring
+        web: INFO  # Логирование HTTP-запросов/ответов
         http:
-          converter: INFO  # Подробное логирование HTTP-конвертеров
+          converter: INFO  # Подробное логирование конвертеров HTTP
         orm:
           jpa: INFO  # Логирование операций JPA
           jpa.JpaTransactionManager: INFO  # Логирование транзакций JPA

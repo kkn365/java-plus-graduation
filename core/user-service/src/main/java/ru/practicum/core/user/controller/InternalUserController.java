@@ -34,7 +34,7 @@ public class InternalUserController implements UserClient {
      */
     @Override
     public ResponseEntity<UserShortDto> getUser(Long userId) throws FeignException {
-        log.info("GET /internal/user/{} - Получен запрос на получение информации о пользователе", userId);
+        log.info("GET /internal/user/{} - Получен внутренний запрос на получение информации о пользователе", userId);
         return ResponseEntity.ok().body(userService.getUserById(userId));
     }
 
@@ -47,7 +47,7 @@ public class InternalUserController implements UserClient {
      */
     @Override
     public ResponseEntity<List<UserShortDto>> getUsers(List<Long> ids) throws FeignException {
-        log.info("GET /internal/user - Получен запрос на получение информации о пользователях");
+        log.info("GET /internal/user - Получен внутренний запрос на получение информации о пользователях");
         return ResponseEntity.ok().body(userService.getUsersByIds(ids));
     }
 }

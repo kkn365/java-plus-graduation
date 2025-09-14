@@ -12,49 +12,26 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none  # Отключение автоматического управления схемой БД в тестах
+      ddl-auto: update  # Включает автоматическое обновление схемы БД в тестах
     properties:
       hibernate:
         format_sql: true  # Форматирование SQL-запросов в логах для удобства отладки
 
   datasource:
     driver-class-name: org.h2.Driver  # Используется вместо deprecated driverClassName
-    url: jdbc:h2:mem:users_db;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH  # H2 в памяти с PostgreSQL-совместимым режимом
-    username: ewm-user
-    password: ewm-user
-
-resilience4j.circuitbreaker:
-  configs:
-    default:
-      slidingWindowSize: 50
-      failureRateThreshold: 50
-  instances:
-    myFeignClient:
-      slidingWindowSize: 10
-      waitDurationInOpenState: 10000 # 10 секунд в миллисекундах
-      permittedNumberOfCallsInHalfOpenState: 3
-      slidingWindowType: COUNT_BASED
-      minimumNumberOfCalls: 5
-      automaticTransitionFromOpenToHalfOpenEnabled: true
+    url: jdbc:h2:mem:users_test_db;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH  # H2 в памяти с PostgreSQL-совместимым режимом
+    username: ewm-user-test
+    password: ewm-user-test
 
 logging:
   level:
     org:
       springframework:
+        web: DEBUG  # Логирование HTTP-запросов/ответов
+        http:
+          converter: DEBUG  # Подробное логирование конвертеров HTTP
         orm:
           jpa: DEBUG  # Логирование операций JPA
           jpa.JpaTransactionManager: DEBUG  # Логирование транзакций JPA
         transaction:
-          TransactionInterceptor: DEBUG  # Логирование транзакций Spring  # Логирование Spring Transaction Interceptor
-      hibernate:
-        SQL: DEBUG  # Логирование SQL-запросов Hibernate
-        type.descriptor.sql.BasicBinder: DEBUG  # Логирование значений, подставляемых в SQL
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: info
-  info:
-    env:
-      enabled: true
+          TransactionInterceptor: DEBUG  # Логирование Spring Transaction Interceptor

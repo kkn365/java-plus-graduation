@@ -28,6 +28,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<querydsl.version>5.1.0</querydsl.version>
 		<org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
+		<spring-cloud.version>2025.0.0</spring-cloud.version>
 		<spring-cloud-dependencies.version>2025.0.0</spring-cloud-dependencies.version>
 	</properties>
 
@@ -93,6 +94,7 @@
 			<artifactId>mapstruct-processor</artifactId>
 			<scope>provided</scope>
 		</dependency>
+
 	</dependencies>
 
 	<build>

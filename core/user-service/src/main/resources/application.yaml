@@ -15,6 +15,20 @@ spring:
       retry:
         useRandomPolicy: true  # Использует случайную политику backoff между попытками
         max-interval: 6000  # Максимальный интервал между попытками (в миллисекундах)
+  # Конфигурация Resilience4j для Circuit Breaker
+  resilience4j.circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 50  # Количество последних вызовов для оценки статуса
+        failureRateThreshold: 50  # Процент ошибок, при котором срабатывает breaker
+    instances:
+      myFeignClient:
+        slidingWindowSize: 10  # Окно для отслеживания состояния клиента
+        waitDurationInOpenState: 10000  # Время ожидания перед переходом в полузакрытое состояние (мс)
+        permittedNumberOfCallsInHalfOpenState: 3  # Максимальное количество вызовов в полузакрытом состоянии
+        slidingWindowType: COUNT_BASED  # Использовать счетчик вызовов
+        minimumNumberOfCalls: 5  # Минимум вызовов для активации breaker
+        automaticTransitionFromOpenToHalfOpenEnabled: true  # Автоматический переход из открытого в полузакрытое состояние
 
 eureka:
   client:

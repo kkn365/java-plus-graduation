@@ -134,7 +134,19 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public List<UserShortDto> getUsersByIds(List<Long> ids) {
-        return userRepository.findAllById(ids).stream()
+        // Проверка на null и пустой список
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        // Получаем пользователей из БД
+        List<User> users = userRepository.findAllById(ids);
+
+        // Проверяем, что все пользователи были найдены
+        if (users.size() != ids.size()) {
+            throw new NotFoundException("Не все пользователи были найдены");
+        }
+        // Возвращаем список DTO краткой информации о пользователях
+        return users.stream()
                 .map(userMapper::toShortDto)
                 .toList();
     }

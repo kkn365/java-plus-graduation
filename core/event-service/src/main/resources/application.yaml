@@ -1,0 +1,41 @@
+server:
+  port: 0  # Автоматически выбирает свободный порт
+
+spring:
+  application:
+    name: event-service  # Имя сервиса, используется в Eureka и логировании
+  config:
+    import: "configserver:"  # Подтягивает конфигурацию из Spring Cloud Config Server
+  cloud:
+    config:
+      discovery:
+        enabled: true  # Включает поиск Config Server через Eureka
+        service-id: config-server
+      fail-fast: true  # Запрещает запуск приложения, если не удалось загрузить конфигурацию
+      retry:
+        useRandomPolicy: true  # Использует случайную политику backoff между попытками
+        max-interval: 6000  # Максимальный интервал между попытками (в миллисекундах)
+  # Конфигурация Resilience4j для Circuit Breaker
+  resilience4j.circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 50  # Количество последних вызовов для оценки статуса
+        failureRateThreshold: 50  # Процент ошибок, при котором срабатывает breaker
+    instances:
+      myFeignClient:
+        slidingWindowSize: 10  # Окно для отслеживания состояния клиента
+        waitDurationInOpenState: 10000  # Время ожидания перед переходом в полузакрытое состояние (мс)
+        permittedNumberOfCallsInHalfOpenState: 3  # Максимальное количество вызовов в полузакрытом состоянии
+        slidingWindowType: COUNT_BASED  # Использовать счетчик вызовов
+        minimumNumberOfCalls: 5  # Минимум вызовов для активации breaker
+        automaticTransitionFromOpenToHalfOpenEnabled: true  # Автоматический переход из открытого в полузакрытое состояние
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/  # Адрес сервис-дисковера
+  instance:
+    preferIpAddress: true  # Регистрирует инстанс по IP вместо хостнейма
+    hostname: localhost  # Хостнейм для локальной разработки
+    instance-id: "${spring.application.name}:${server.port}"  # Уникальный идентификатор инстанса
+    leaseRenewalIntervalInSeconds: 10  # Интервал обновления аренды в Eureka
