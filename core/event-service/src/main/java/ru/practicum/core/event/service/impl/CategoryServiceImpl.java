@@ -64,25 +64,32 @@ public class CategoryServiceImpl implements CategoryService {
      * Метод обновления информации о категории по её идентификатору.
      * <p>
      * Обновляет имя категории, если оно отличается от текущего. Если новое имя совпадает с текущим,
-     * возвращается DTO текущей категории без изменений. В противном случае изменения сохраняются в репозиторий.
+     * возвращается DTO текущей категории без изменений. Перед обновлением проверяется уникальность нового имени.
      *
      * @param categoryId  идентификатор категории, которую необходимо обновить
      * @param categoryDto объект DTO с новыми данными категории (в данном случае — новое имя)
      * @return объект DTO обновлённой категории
-     * @throws NotFoundException если категория с указанным ID не найдена
+     * @throws NotFoundException         если категория с указанным ID не найдена
+     * @throws DataAlreadyExistException если категория с указанным именем уже существует
      */
     @Override
     public CategoryDto updateCategory(Long categoryId, CategoryDto categoryDto) {
         // Проверяем, что категория с указанным ID существует
         Category currentCategory = getCategoryById(categoryId);
+
         // Проверяем, что новое имя категории не совпадает с текущим
         if (currentCategory.getName().equals(categoryDto.getName())) {
             // Если имена совпадают, возвращаем DTO текущей категории
             return categoryMapper.toDto(currentCategory);
         }
+
+        // Проверяем, что новое имя категории не существует в базе данных
+        checkCategoryExistenceByNameOrThrow(categoryDto.getName());
+
         // Обновляем название категории
         currentCategory.setName(categoryDto.getName());
-        // Сохраняем обновлённую категорию в репозиторий
+
+        // Сохраняем обновлённую категорию
         Category updatedCategory = categoryRepository.save(currentCategory);
 
         log.info("Название категории с ID={} изменено на: {}", updatedCategory.getId(), updatedCategory.getName());
