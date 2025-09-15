@@ -24,3 +24,4 @@ target/
 ### GiGA IDE ###
 .gigaide
 /.gigaide/gigaide.properties
+/amplicode.xml

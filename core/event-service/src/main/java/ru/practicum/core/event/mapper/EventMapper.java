@@ -62,6 +62,16 @@ public interface EventMapper {
     })
     EventDto toDto(Event event);
 
+    /**
+     * Преобразует объект события в DTO (Data Transfer Object).
+     * <p>
+     * Метод выполняет маппинг полей модели {@link Event} на поля DTO {@link EventDto},
+     * при этом некоторые поля игнорируются или заполняются из дополнительных источников.
+     *
+     * @param event         модель события, которую необходимо преобразовать
+     * @param userShortDto  информация об инициаторе события (владелеце)
+     * @return              объект DTO события с заполненными данными
+     */
     @Mappings({
             @Mapping(target = "id", source = "event.id"),
             @Mapping(target = "views", ignore = true),

@@ -46,6 +46,12 @@ import static ru.practicum.core.event.model.enums.events.EventSort.EVENT_DATE;
 import static ru.practicum.core.event.repository.EventRepository.AdminEventSpec.withAdminParams;
 import static ru.practicum.core.event.repository.EventRepository.UserEventSpec.withUserParams;
 
+/**
+ * Реализация сервиса для работы с событиями.
+ * <p>
+ * Класс содержит бизнес-логику для управления событиями, включая создание, обновление, удаление и получение информации о событиях.
+ * Использует репозиторий для взаимодействия с базой данных и клиенты для обращения к другим микросервисам.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

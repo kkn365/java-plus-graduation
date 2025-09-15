@@ -22,6 +22,12 @@ import java.util.List;
 
 import static ru.practicum.core.api.util.constants.PaginationConstants.*;
 
+/**
+ * Контроллер для работы с внешними запросами, связанными с пользователями.
+ * <p>
+ * Предоставляет REST-эндпоинты для управления пользователями, доступными только для ролей с правами администратора.
+ * Взаимодействует с сервисом пользователей через внедрённую зависимость.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/admin/users")

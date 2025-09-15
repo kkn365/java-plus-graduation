@@ -6,6 +6,12 @@ import org.springframework.context.annotation.Configuration;
 
 import java.time.LocalDateTime;
 
+/**
+ * Конфигурационный класс для настройки библиотеки Jackson.
+ * <p>
+ * Этот класс содержит настройки, необходимые для корректной сериализации и десериализации объектов,
+ * включая настройку обработки временных данных (например, дат и времени) в формате JSON.
+ */
 @Configuration
 public class JacksonConfig {
 

@@ -20,6 +20,12 @@ import java.util.stream.Collectors;
 
 import static ru.practicum.core.api.exception.NotFoundException.notFoundException;
 
+/**
+ * Реализация сервиса для работы с пользователями.
+ * <p>
+ * Класс предоставляет методы для создания, получения и управления пользователями.
+ * Использует репозиторий для взаимодействия с базой данных.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

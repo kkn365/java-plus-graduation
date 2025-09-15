@@ -15,6 +15,12 @@ import ru.practicum.stats.server.service.StatsService;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Контроллер для обработки HTTP-запросов, связанных с подсчётом статистики.
+ * <p>
+ * Реализует интерфейс {@link StatsClient}, предоставляя эндпоинты для добавления событий и получения статистики.
+ * Использует сервисы для работы с данными, включая сохранение хитов и получение статистики по заданным параметрам.
+ */
 @Slf4j
 @RestController
 @RequiredArgsConstructor

@@ -3,6 +3,7 @@ package ru.practicum.stats.server.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.stats.dto.CreateHitDTO;
 import ru.practicum.stats.server.mapper.HitMapper;
@@ -27,8 +28,8 @@ public class HitServiceImpl implements HitService {
      *
      * @param dto данные для создания хита
      */
+    @Transactional(isolation = Isolation.READ_UNCOMMITTED)
     @Override
-    @Transactional
     public void createHit(CreateHitDTO dto) {
         Hit newHit = hitMapper.mapToHit(dto);
         log.info("Создан новый хит: {}", dto);

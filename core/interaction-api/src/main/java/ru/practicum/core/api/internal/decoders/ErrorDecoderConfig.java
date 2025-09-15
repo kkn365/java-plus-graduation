@@ -4,6 +4,12 @@ import feign.Feign;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Конфигурационный класс для настройки декодера ошибок Feign.
+ * <p>
+ * Используется для обработки HTTP-ошибок, возвращаемых микросервисами при взаимодействии через Feign-клиенты.
+ * Позволяет преобразовывать исходные HTTP-ответы с ошибками в исключения, понятные логике приложения.
+ */
 @Configuration
 public class ErrorDecoderConfig {
     /**

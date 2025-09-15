@@ -4,12 +4,7 @@ import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
 import ru.practicum.core.api.constraint.validator.EventDateFromValidator;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import java.lang.annotation.*;
 
 /**
  * Аннотация для валидации даты события.
@@ -18,10 +13,11 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * Используется в DTO создания события.
  */
 @Target({ElementType.FIELD})
-@Retention(RUNTIME)
+@Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Constraint(validatedBy = {EventDateFromValidator.class})
 public @interface EventStartDateTime {
+
     /**
      * Сообщение об ошибке, если дата некорректна.
      * <p>
@@ -29,7 +25,17 @@ public @interface EventStartDateTime {
      */
     String message() default "Дата события должна быть не ранее чем через два часа от текущего времени";
 
+    /**
+     * Группа валидации (по умолчанию — пустой массив).
+     * <p>
+     * Используется для группировки проверок при необходимости.
+     */
     Class<?>[] groups() default {};
 
+    /**
+     * Пользовательская нагрузка для сообщений об ошибках.
+     * <p>
+     * Может использоваться для дополнительной информации или логирования.
+     */
     Class<? extends Payload>[] payload() default {};
 }

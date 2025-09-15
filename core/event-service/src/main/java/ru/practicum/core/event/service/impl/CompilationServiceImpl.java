@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.core.event.dto.compilations.CompilationDto;
 import ru.practicum.core.event.dto.compilations.NewCompilationDto;
@@ -51,7 +53,7 @@ public class CompilationServiceImpl implements CompilationService {
      * @return DTO созданной подборки событий
      * @throws ValidationException если указаны несуществующие события
      */
-    @Transactional
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     @Override
     public CompilationDto create(NewCompilationDto dto) {
         // Получаем события, если они указаны в DTO. Если нет — устанавливаем пустое множество.
@@ -76,7 +78,7 @@ public class CompilationServiceImpl implements CompilationService {
      * @param compId Идентификатор подборки
      * @throws NotFoundException если подборка с указанным ID не найдена
      */
-    @Transactional
+    @Transactional(propagation = Propagation.SUPPORTS, isolation = Isolation.REPEATABLE_READ)
     @Override
     public void delete(Long compId) {
         if (!compilationRepository.existsById(compId)) {
@@ -94,7 +96,7 @@ public class CompilationServiceImpl implements CompilationService {
      * @throws NotFoundException   если подборка с указанным ID не найдена
      * @throws ValidationException если указаны несуществующие события
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     @Override
     public CompilationDto update(Long compId, UpdateCompilationRequest dto) {
         // Получаем подборку из БД или выбрасываем исключение, если её нет
