@@ -1,8 +1,8 @@
 server:
-  port: 0
+  port: 0  # Используется случайный порт для тестирования в контейнерах
   servlet:
     encoding:
-      force: true
+      force: true  # Принудительное использование UTF-8 для всех запросов/ответов
       charset: UTF-8
 
 spring:
@@ -10,23 +10,23 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss  # Глобальный формат даты для java.util.Date
     serialization:
       write-dates-as-timestamps: false  # Отправляем даты в читаемом виде, а не как таймстемпы
-    default-property-inclusion: non_null  # Игнорируем null-значения при сериализации
+    default-property-inclusion: non_null  # Игнорируем null-значения при сериализации JSON
 
   jpa:
-    hibernate.ddl-auto: update  # Автоматическое обновление схемы БД при старте (используется только в dev/тест)
+    hibernate.ddl-auto: none  # Отключение автоматического управления схемой БД
     properties:
       hibernate:
-        format_sql: true  # Форматирует SQL-запросы в логах
+        format_sql: false  # Отключаем форматирование SQL-запросов
         connection:
-          read_only: false  # База не в режиме только для чтения
+          read_only: false  # База не находится в режиме только для чтения
 
   sql:
     init:
-      mode: always  # Всегда загружать инициализационные скрипты при запуске приложения
+      mode: always  # Всегда загружать инициализационные скрипты при старте
 
   datasource:
-    driver-class-name: org.postgresql.Driver  # Класс JDBC-драйвера PostgreSQL
-    url: jdbc:postgresql://localhost:5432/ewm  # URL к локальной БД
+    dataSourceClassName: org.postgresql.ds.PGSimpleDataSource
+    url: jdbc:postgresql://localhost:6432/stats_db  # URL к локальной БД
     username: ewm-stats  # Имя пользователя БД
     password: ewm-stats  # Пароль пользователя БД
 
@@ -34,17 +34,11 @@ logging:
   level:
     org:
       springframework:
+        web: INFO  # Логирование HTTP-запросов/ответов
+        http:
+          converter: INFO  # Подробное логирование конвертеров HTTP
         orm:
-          jpa: INFO  # Логирование JPA операций
-          jpa.JpaTransactionManager: INFO  # Логирование транзакций
+          jpa: INFO  # Логирование операций JPA
+          jpa.JpaTransactionManager: INFO  # Логирование транзакций JPA
         transaction:
           TransactionInterceptor: INFO  # Логирование Spring Transaction Interceptor
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: info
-  info:
-    env:
-      enabled: true

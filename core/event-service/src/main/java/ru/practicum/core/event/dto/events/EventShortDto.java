@@ -1,0 +1,68 @@
+package ru.practicum.core.event.dto.events;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import ru.practicum.core.api.internal.event.dto.CategoryDto;
+import ru.practicum.core.api.internal.user.dto.UserShortDto;
+
+import java.time.LocalDateTime;
+
+/**
+ * DTO для краткого представления события.
+ * <p>
+ * Используется при возврате данных клиенту. Содержит основные поля события,
+ * такие как заголовок, аннотация, категория и количество просмотров.
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class EventShortDto {
+
+    /**
+     * Краткое описание события (аннотация).
+     */
+    private String annotation;
+
+    /**
+     * Категория события.
+     */
+    private CategoryDto category;
+
+    /**
+     * Количество подтверждённых заявок на участие.
+     */
+    private Integer confirmedRequests;
+
+    /**
+     * Дата и время начала события.
+     */
+    private LocalDateTime eventDate;
+
+    /**
+     * Уникальный идентификатор события.
+     */
+    private Long id;
+
+    /**
+     * Инициатор события (пользователь).
+     */
+    private UserShortDto initiator;
+
+    /**
+     * Признак платности события.
+     */
+    private Boolean paid;
+
+    /**
+     * Название события.
+     */
+    private String title;
+
+    /**
+     * Количество просмотров события.
+     */
+    private Long views;
+}

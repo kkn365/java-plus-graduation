@@ -1,3 +1,6 @@
+server:
+  port: 0  # Автоматически выбирает свободный порт
+
 spring:
   application:
     name: config-server  # Имя сервиса в сервис-дисковере (Eureka)
@@ -11,8 +14,6 @@ spring:
             - classpath:config/stats/{application}  # Конфигурации для сервиса stats
             - classpath:config/core/{application}   # Конфигурации для сервиса core
             - classpath:config/infra/{application}  # Конфигурации для инфраструктурных сервисов
-server:
-  port: 0  # Автоматически выбирает свободный порт, удобно для тестирования и CI/CD
 
 eureka:
   client:
