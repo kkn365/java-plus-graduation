@@ -1,7 +1,7 @@
 package ru.practicum.core.event.service.impl;
 
+import com.google.protobuf.Timestamp;
 import feign.FeignException;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,11 +30,13 @@ import ru.practicum.core.event.model.enums.events.EventStateAction;
 import ru.practicum.core.event.repository.EventRepository;
 import ru.practicum.core.event.service.api.CategoryService;
 import ru.practicum.core.event.service.api.EventService;
-import ru.practicum.stats.client.StatsClient;
-import ru.practicum.stats.dto.CreateHitDTO;
-import ru.practicum.stats.dto.HitsStatDTO;
+import ru.practicum.recomm.client.AnalyzerClient;
+import ru.practicum.recomm.client.CollectorClient;
+import ru.practicum.recommendations.messages.*;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -73,7 +75,8 @@ public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
     private final CategoryService categoryService;
 
-    private final StatsClient statsClient;
+    private final CollectorClient collectorClient;
+    private final AnalyzerClient analyzerClient;
     private final UserClient userClient;
     private final RequestClient requestClient;
 
@@ -287,9 +290,9 @@ public class EventServiceImpl implements EventService {
 
         // Проверяем наличие и значение параметра сортировки
         if (userEventParams.getSort() != null
-                && userEventParams.getSort().equals(EventSort.VIEWS)) {
-            log.debug("Применена сортировка по количеству просмотров");
-            eventDtos.sort(Comparator.comparing(EventDto::getViews).reversed());
+                && userEventParams.getSort().equals(EventSort.RATING)) {
+            log.debug("Применена сортировка по рейтингу");
+            eventDtos.sort(Comparator.comparing(EventDto::getRating).reversed());
         }
 
         // Возвращаем список DTO событий
@@ -297,38 +300,29 @@ public class EventServiceImpl implements EventService {
     }
 
     /**
-     * Метод для отправки информации о хите (просмотре) события в сервис статистики.
-     * Используется для отслеживания количества просмотров событий.
+     * Возвращает информацию о событии, доступную публично.
+     * <p>
+     * Метод проверяет, существует ли событие с указанным идентификатором, и находится ли оно в состоянии "Опубликовано".
+     * Если событие опубликовано, проверяется существование пользователя с указанным ID.
+     * Затем отправляется действие "просмотр" в коллектор для дальнейшей обработки,
+     * и формируется объект DTO события с дополнительной информацией.
      *
-     * @param request объект HttpServletRequest, содержащий информацию о запросе клиента
+     * @param eventId уникальный идентификатор события, которое запрашивается
+     * @param userId  идентификатор пользователя, который просматривает событие (может быть null)
+     * @return объект {@link EventDto}, содержащий информацию о событии
+     * @throws NotFoundException если событие не найдено, неопубликовано или пользователь не найден
      */
     @Override
-    public void sendHit(HttpServletRequest request) {
-        CreateHitDTO dto = CreateHitDTO
-                .builder()
-                .app("event-service")
-                .ip(request.getRemoteAddr())
-                .uri(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
-        statsClient.createHit(dto);
-        log.debug("Отправлен hit: {}", dto);
-    }
-
-    /**
-     * Метод получения информации о событии, которое находится в состоянии "Опубликовано".
-     *
-     * @param eventId идентификатор события, информацию о котором требуется получить
-     * @return DTO события с дополнительной информацией
-     * @throws NotFoundException если событие не найдено или не опубликовано
-     */
-    @Override
-    public EventDto findPublishedEvent(Long eventId) {
+    public EventDto findPublishedEvent(Long eventId, Long userId) {
         Event event = findEventById(eventId);
 
         if (!EventState.PUBLISHED.equals(event.getState())) {
             throw new NotFoundException(String.format(EVENT_NOT_PUBLISHED_ERROR_MESSAGE, eventId));
         }
+        // Проверяем, что пользователь с указанным ID существует
+        getUserOrThrow(userId);
+        // Отправляем действие пользователя в коллектор
+        sendUserAction(userId, eventId, ActionTypeProto.ACTION_VIEW);
         // Возвращаем DTO события
         return createEventDtoWithAdditionalInfo(event);
     }
@@ -366,6 +360,99 @@ public class EventServiceImpl implements EventService {
     }
 
     /**
+     * Возвращает список рекомендованных событий для указанного пользователя.
+     * <p>
+     * Метод проверяет существование пользователя с указанным идентификатором, формирует запрос к сервису аналитики,
+     * получает список рекомендаций и преобразует его в DTO-объекты событий. Рекомендации сортируются по убыванию релевантности.
+     *
+     * @param userId уникальный идентификатор пользователя, для которого формируются рекомендации
+     * @return отсортированный список объектов {@link EventDto}, содержащих информацию о рекомендуемых событиях
+     * @throws NotFoundException если пользователь с указанным ID не найден
+     */
+    @Override
+    public List<EventDto> getRecommendations(Long userId) {
+        // Проверяем, что пользователь с указанным ID существует
+        getUserOrThrow(userId);
+        // Формируем запрос к сервису аналитики
+        UserPredictionsRequest userPredictionsRequest = UserPredictionsRequest.newBuilder()
+                .setUserId(userId)
+                .build();
+        // Получаем рекомендации для пользователя
+        List<RecommendedEvent> recommendedEvents = analyzerClient.getRecommendationsForUser(userPredictionsRequest);
+        // Если рекомендаций нет, возвращаем пустой список
+        if (recommendedEvents.isEmpty()) {
+            return List.of();
+        }
+        // Преобразовываем рекомендации в Map<Long, Double>
+        Map<Long, Double> recommendations = recommendedEvents.stream()
+                .collect(Collectors.toMap(
+                        RecommendedEvent::getEventId,
+                        RecommendedEvent::getScore
+                ));
+        // Получаем события по ID
+        List<Event> events = eventRepository.findAllById(recommendations.keySet());
+        // Создаем DTO событий с дополнительной информацией
+        List<EventDto> eventDtos = createEventDtoListWithAdditionalInfo(events);
+        // Сортируем DTO по релевантности и возвращаем результат
+        return eventDtos.stream()
+                .sorted((e1, e2) -> {
+                    double s1 = recommendations.getOrDefault(e1.getId(), 0.0);
+                    double s2 = recommendations.getOrDefault(e2.getId(), 0.0);
+                    return Double.compare(s2, s1); // По убыванию
+                })
+                .toList();
+    }
+
+    /**
+     * Добавляет лайк к событию от пользователя.
+     * <p>
+     * Метод проверяет существование пользователя и события, а также состояние события. Если событие опубликовано,
+     * отправляется действие "лайк" в коллектор для дальнейшей обработки.
+     *
+     * @param eventId   уникальный идентификатор события, которому добавляется лайк
+     * @param userId    уникальный идентификатор пользователя, который ставит лайк
+     * @throws NotFoundException если пользователь или событие не найдены, либо событие не находится в состоянии "Опубликовано"
+     */
+    @Override
+    public void addLike(Long eventId, Long userId) {
+        // Проверяем, что пользователь с указанным ID существует
+        getUserOrThrow(userId);
+        // Проверяем, что событие с указанным ID существует
+        Event event = findEventById(eventId);
+        // Проверяем, что событие находится в состоянии "Опубликовано"
+        if (!EventState.PUBLISHED.equals(event.getState())) {
+            throw new NotFoundException(String.format(EVENT_NOT_PUBLISHED_ERROR_MESSAGE, eventId));
+        }
+        // Отправляем действие пользователя в коллектор
+        sendUserAction(userId, eventId, ActionTypeProto.ACTION_LIKE);
+    }
+
+    /**
+     * Отправляет действие пользователя в коллектор.
+     * <p>
+     * Создаёт объект {@link UserActionProto} с текущим временем в формате UTC и передаёт его в сервис collectorClient.
+     *
+     * @param userId     идентификатор пользователя
+     * @param eventId    идентификатор события
+     * @param actionType тип действия (VIEW, LIKE и т.д.)
+     */
+    private void sendUserAction(Long userId, Long eventId, ActionTypeProto actionType) {
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
+        long epochSecond = now.atOffset(ZoneOffset.UTC).toEpochSecond();
+
+        UserActionProto userAction = UserActionProto.newBuilder()
+                .setUserId(userId)
+                .setEventId(eventId)
+                .setActionType(actionType)
+                .setTimestamp(Timestamp.newBuilder().setSeconds(epochSecond).build())
+                .build();
+
+        collectorClient.newUserAction(userAction);
+        log.debug("В коллектор отправлено действие пользователя c ID={} с типом {} на событие c ID={}",
+                userId, actionType, eventId);
+    }
+
+    /**
      * Метод создания DTO события с дополнительной информацией (пользователем и статистикой).
      *
      * @param event событие, для которого необходимо создать DTO
@@ -377,12 +464,14 @@ public class EventServiceImpl implements EventService {
     }
 
     /**
-     * Метод преобразования списка событий в список DTO с дополнительной информацией:
-     * инициатор события, количество подтверждённых заявок и статистика просмотров.
+     * Создаёт список объектов DTO событий с дополнительной информацией.
+     * <p>
+     * Метод собирает информацию о пользователях-инициаторах, количестве подтверждённых заявок и рейтингах событий,
+     * и добавляет её в DTO каждого события.
      *
-     * @param events список событий, которые необходимо преобразовать
-     * @return список DTO событий с дополнительной информацией (пользователями и статистикой)
-     * @throws NotFoundException если пользователь-инициатор не найден
+     * @param events список событий, для которых требуется создать DTO
+     * @return список объектов {@link EventDto}, содержащих основную информацию об событиях
+     *         и дополнительные данные (инициатор, количество подтверждённых заявок, рейтинг)
      */
     private List<EventDto> createEventDtoListWithAdditionalInfo(List<Event> events) {
         if (events == null || events.isEmpty()) {
@@ -396,95 +485,67 @@ public class EventServiceImpl implements EventService {
         // Получаем пользователей по ID
         Map<Long, UserShortDto> users = getUsersOrThrow(initiatorIds);
 
-        // Запрашиваем количество подтверждённых заявок
-        Map<Long, Long> confirmedRequestsCount = loadConfirmedRequestsCount(events);
-
-        // Преобразуем события в DTO с дополнительной информацией
-        List<EventDto> eventDtos = events.stream()
-                .map(event -> {
-                    EventDto dto = eventMapper.toDto(event);
-                    dto.setInitiator(users.get(event.getInitiatorId()));
-                    dto.setConfirmedRequests(confirmedRequestsCount.getOrDefault(event.getId(), 0L));
-                    return dto;
-                })
-                .toList();
-
-        // Получаем минимальную и максимальную дату событий
-        LocalDateTime earliestCreatedOn = getEarliestCreatedOn(events);
-        LocalDateTime latestEventDate = getLatestEventDate(events, earliestCreatedOn);
-
-        // Добавляем статистику просмотров
-        loadViews(eventDtos, earliestCreatedOn, latestEventDate);
-
-        // Возвращаем список DTO событий c с дополнительной информацией
-        return eventDtos;
-    }
-
-    /**
-     * Метод загрузки статистики просмотров (views) для списка событий.
-     * Запрашивает данные у сервиса статистики и обновляет соответствующие DTO событий.
-     *
-     * @param events Список DTO событий, для которых нужно получить статистику просмотров
-     * @param start  Начальная дата диапазона для получения статистики.
-     *               Может быть null — тогда используется текущая дата минус 1 час
-     * @param end    Конечная дата диапазона для получения статистики.
-     *               Может быть null — тогда используется текущая дата
-     */
-    private void loadViews(List<EventDto> events, LocalDateTime start, LocalDateTime end) {
-        // Создаём маппинг между ID события и URI для запроса статистики
-        Map<Long, String> eventUriMap = events.stream()
-                .collect(Collectors.toMap(
-                        EventDto::getId,
-                        event -> "/events/" + event.getId(), // Формат URI согласно требованиям статистики
-                        (existing, replacement) -> existing)); // Обработка дубликатов (должно не случаться)
-
-        try {
-            // Получаем статистику просмотров из внешнего сервиса
-            ResponseEntity<List<HitsStatDTO>> statsResponse = statsClient.getStats(
-                    start == null ? LocalDateTime.now().minusHours(1L) : start,
-                    end == null ? LocalDateTime.now() : end,
-                    List.copyOf(eventUriMap.values()), // Гарантируем неизменяемость списка
-                    true // Учитываем уникальные IP-адреса (статистика по уникальным просмотрам)
-            );
-
-            // Если данные получены, создаём маппинг URI → количество просмотров
-            if (statsResponse.hasBody()) {
-                List<HitsStatDTO> stats = statsResponse.getBody();
-                if (stats != null && !stats.isEmpty()) {
-                    Map<String, Long> uriToHits = stats.stream()
-                            .collect(Collectors.toMap(HitsStatDTO::getUri, HitsStatDTO::getHits));
-
-                    // Обновляем DTO событий значениями статистики
-                    for (EventDto event : events) {
-                        String uri = eventUriMap.get(event.getId());
-                        event.setViews(uriToHits.getOrDefault(uri, 0L));
-                    }
-                    return;
-                }
-            }
-            // Если данных нет или тело пустое, устанавливаем просмотры в 0 для всех событий
-            events.forEach(event -> event.setViews(0L));
-        } catch (FeignException e) {
-            log.error("Ошибка при получении статистики просмотров: {}", e.getMessage(), e);
-            // В случае ошибки оставляем текущие значения views без изменений
-        }
-    }
-
-    /**
-     * Метод получения количества подтверждённых заявок на участие в событиях.
-     *
-     * @param events список событий, для которых необходимо получить количество подтверждённых заявок
-     * @return маппинг: идентификатор события → количество подтверждённых заявок
-     * @throws FeignException при ошибке запроса к сервису заявок
-     */
-    private Map<Long, Long> loadConfirmedRequestsCount(List<Event> events) {
-        // Извлечение уникальных идентификаторов событий
-        List<Long> eventIds = events.stream()
+        // Получаем список уникальных ID событий
+        List<Long> eventsIds = events.stream()
                 .map(Event::getId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
+        // Запрашиваем количество подтверждённых заявок
+        Map<Long, Long> confirmedRequestsCount = loadConfirmedRequestsCount(eventsIds);
+        // Запрашиваем рейтинги событий
+        Map<Long, Double> ratings = loadRatings(eventsIds);
 
+        // Возвращаем список DTO событий c с дополнительной информацией
+        return events.stream()
+                .map(event -> {
+                    EventDto dto = eventMapper.toDto(event);
+                    dto.setInitiator(users.get(event.getInitiatorId()));
+                    dto.setConfirmedRequests(confirmedRequestsCount.getOrDefault(event.getId(), 0L));
+                    dto.setRating(ratings.getOrDefault(event.getId(), 0.0));
+                    return dto;
+                })
+                .toList();
+    }
+
+    /**
+     * Загружает рейтинги событий на основе их идентификаторов.
+     * <p>
+     * Метод отправляет запрос в сервис {@code analyzerClient} для получения рейтинга каждого события.
+     * Рейтинг формируется на основе пользовательских взаимодействий (например, просмотров, лайков и т.д.).
+     *
+     * @param eventIds список уникальных идентификаторов событий, для которых нужно получить рейтинг
+     * @return карта, где ключ — идентификатор события, значение — его рейтинг
+     */
+    private Map<Long, Double> loadRatings(List<Long> eventIds) {
+        log.debug("Загрузка рейтингов для событий: {}", eventIds);
+        // Создание запроса на получение рейтинга
+        InteractionsCountRequest request = InteractionsCountRequest.newBuilder()
+                .addAllEventIds(eventIds)
+                .build();
+
+        // Получение данных из сервиса analyzerClient
+        List<RecommendedEvent> recommendedEvents = analyzerClient.getInteractionsCount(request);
+
+        // Преобразование списка в Map<Long, Double>
+        return recommendedEvents.stream()
+                .collect(Collectors.toMap(
+                        RecommendedEvent::getEventId,
+                        RecommendedEvent::getScore
+                ));
+    }
+
+    /**
+     * Загружает количество подтверждённых заявок для указанных событий.
+     * <p>
+     * Метод отправляет запрос в сервис {@code requestClient} и получает список объектов {@link EventRequestsCountDto},
+     * которые содержат информацию о количестве подтверждённых заявок на каждое событие.
+     * Результат преобразуется в карту, где ключ — идентификатор события, значение — количество подтверждённых заявок.
+     *
+     * @param eventIds список уникальных идентификаторов событий, для которых нужно получить количество подтверждённых заявок
+     * @return карта, где ключ — идентификатор события, значение — количество подтверждённых заявок
+     */
+    private Map<Long, Long> loadConfirmedRequestsCount(List<Long> eventIds) {
         log.debug("Загрузка количества подтверждённых заявок для событий: {}", eventIds);
 
         try {
@@ -502,29 +563,17 @@ public class EventServiceImpl implements EventService {
             }
 
             // Преобразование данных в маппинг
-            return createConfirmedRequestsMap(response.getBody());
+            return response.getBody().stream()
+                    .collect(Collectors.toMap(
+                            EventRequestsCountDto::getEventId,
+                            EventRequestsCountDto::getConfirmedRequests
+                    ));
 
         } catch (FeignException fe) {
             log.error("Ошибка при получении количества подтверждённых заявок для событий {}: {}",
                     eventIds, fe.getMessage(), fe);
             return Collections.emptyMap();
         }
-    }
-
-    /**
-     * Метод преобразует список DTO с количеством подтверждённых заявок на события в маппинг:
-     * идентификатор события → количество подтверждённых заявок.
-     *
-     * @param countDtos список объектов EventRequestsCountDto, содержащих информацию о количестве
-     *                  подтверждённых заявок для каждого события
-     * @return маппинг: ключ — идентификатор события, значение — количество подтверждённых заявок
-     */
-    private Map<Long, Long> createConfirmedRequestsMap(List<EventRequestsCountDto> countDtos) {
-        return countDtos.stream()
-                .collect(Collectors.toMap(
-                        EventRequestsCountDto::getEventId,
-                        EventRequestsCountDto::getConfirmedRequests
-                ));
     }
 
     /**
@@ -672,36 +721,6 @@ public class EventServiceImpl implements EventService {
                     userIds, fe.status(), fe.getMessage(), fe);
             throw new NotFoundException(String.format(USERS_NOT_FOUND_ERROR_MESSAGE, userIds), fe);
         }
-    }
-
-    /**
-     * Метод определяет самую раннюю дату создания события из списка событий.
-     * Используется для установления временного диапазона при запросе статистики просмотров.
-     *
-     * @param events список событий, для которых определяется минимальная дата создания
-     * @return самая ранняя дата создания события или текущее время, если даты отсутствуют
-     */
-    private LocalDateTime getEarliestCreatedOn(List<Event> events) {
-        return events.stream()
-                .map(Event::getCreatedOn)
-                .min(LocalDateTime::compareTo)
-                .orElse(LocalDateTime.now());
-    }
-
-    /**
-     * Метод определяет самую позднюю дату события из списка событий.
-     * Используется для установления временного диапазона при запросе статистики просмотров.
-     *
-     * @param events            список событий, для которых определяется максимальная дата события
-     * @param earliestCreatedOn минимальная дата создания события (используется как fallback)
-     * @return самая поздняя дата события или fallback-значение, если даты отсутствуют
-     */
-    private LocalDateTime getLatestEventDate(List<Event> events, LocalDateTime earliestCreatedOn) {
-        return events.stream()
-                .map(Event::getEventDate)
-                .filter(Objects::nonNull)
-                .max(LocalDateTime::compareTo)
-                .orElse(earliestCreatedOn.plusDays(1));
     }
 
     /**

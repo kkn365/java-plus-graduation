@@ -35,3 +35,16 @@ logging:
       hibernate:
         SQL: DEBUG  # Логирование SQL-запросов Hibernate
         type.descriptor.sql.BasicBinder: DEBUG  # Логирование значений, подставляемых в SQL
+
+grpc:
+  client:
+    analyzer:
+      address: 'discovery:///analyzer'
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext
+    collector:
+      address: 'discovery:///collector'
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext

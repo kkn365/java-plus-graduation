@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package stats.service.collector;
+
+option java_multiple_files = true;
+option java_package = "ru.practicum.recommendations.services";
+
+import "google/protobuf/empty.proto";
+import "recommendations/messages/user_actions.proto";
+
+/**
+ * Сервис для приема пользовательских действий в систему рекомендаций.
+ *
+ * Используется для передачи информации о действиях пользователей (например, просмотры, лайки, регистрация)
+ * в систему, которая обрабатывает эти данные и формирует персонализированные рекомендации.
+ */
+service UserActionController {
+  /**
+   * Метод CollectUserAction.
+   *
+   * Принимает сообщение типа `UserAction`, содержащее информацию о пользовательском действии,
+   * и не возвращает никаких данных (возвращает пустой ответ).
+   *
+   * @param request - объект типа `user_actions.UserAction`, содержащий:
+   *                  - user_id: идентификатор пользователя,
+   *                  - event_id: идентификатор мероприятия,
+   *                  - action_type: тип действия (например, просмотр, лайк, регистрация),
+   *                  - timestamp: временная метка действия.
+   * @return google.protobuf.Empty - пустой ответ, подтверждающий получение данных.
+   */
+  rpc CollectUserAction (user_actions.UserActionProto)
+      returns (google.protobuf.Empty);
+}

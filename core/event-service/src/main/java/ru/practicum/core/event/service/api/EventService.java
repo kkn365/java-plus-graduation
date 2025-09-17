@@ -113,24 +113,7 @@ public interface EventService {
      */
     List<EventDto> findAllByUserParams(UserEventParams userEventParams);
 
-    /**
-     * Отправляет информацию о хите (просмотре) в сервис статистики.
-     *
-     * @param request объект HTTP-запроса
-     * @throws RuntimeException если произошла ошибка при отправке данных статистике
-     */
-    void sendHit(HttpServletRequest request);
-
-    /**
-     * Получает событие в состоянии ОПУБЛИКОВАНО.
-     * <p>
-     * Если событие не опубликовано, выбрасывается NotFoundException.
-     *
-     * @param eventId идентификатор события
-     * @return DTO события
-     * @throws NotFoundException если событие не найдено или не опубликовано
-     */
-    EventDto findPublishedEvent(Long eventId);
+    EventDto findPublishedEvent(Long eventId, Long userId);
 
     /**
      * Получает событие по идентификатору.
@@ -151,4 +134,8 @@ public interface EventService {
      * @throws NotFoundException если пользователь не найден
      */
     List<EventDto> findAllEventsByInitiatorId(Long initiatorId);
+
+    List<EventDto> getRecommendations(Long userId);
+
+    void addLike(Long eventId, Long userId);
 }

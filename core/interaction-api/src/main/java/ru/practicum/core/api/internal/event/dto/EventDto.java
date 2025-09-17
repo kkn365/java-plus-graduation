@@ -128,9 +128,9 @@ public class EventDto {
     private Long confirmedRequests;
 
     /**
-     * Количество просмотров события.
+     * Рейтинг события.
      * <p>
-     * Получается из внешнего сервиса статистики.
+     * Получается из внешнего сервиса рекомендаций.
      */
-    private Long views;
+    private Double rating;
 }

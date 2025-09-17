@@ -24,6 +24,11 @@
             <artifactId>interaction-api</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>ru.practicum</groupId>
+            <artifactId>recomm-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <!-- Spring Boot: основные модули -->
         <dependency>

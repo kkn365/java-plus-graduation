@@ -6,8 +6,10 @@ import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import ru.practicum.core.api.internal.event.dto.EventDto;
 import ru.practicum.core.event.dto.events.UserEventParams;
 import ru.practicum.core.event.model.enums.events.EventSort;
@@ -29,6 +31,8 @@ import static ru.practicum.core.api.util.constants.PaginationConstants.*;
 @RestController
 @RequestMapping("/events")
 public class PublicEventsController {
+
+    private static final String USER_ID_HEADER = "X-EWM-USER-ID";
 
     private final EventService eventService;
 
@@ -75,31 +79,43 @@ public class PublicEventsController {
                 .size(size)
                 .build();
 
-        eventService.sendHit(request);
         List<EventDto> events = eventService.findAllByUserParams(userEventParams);
         log.info("Возвращено {} событий", events.size());
 
         return ResponseEntity.ok(events);
     }
 
-    /**
-     * Возвращает информацию о конкретном событии по его ID.
-     *
-     * @param request   HTTP-запрос (используется для сбора статистики)
-     * @param eventId   Идентификатор события
-     * @return ResponseEntity с DTO события
-     */
     @GetMapping("/{eventId}")
     public ResponseEntity<EventDto> getPublishedEvent(
-            HttpServletRequest request,
+            @RequestHeader(USER_ID_HEADER) Long userId,
             @NotNull @PathVariable Long eventId
     ) {
-        log.info("GET /events/{}", eventId);
+        log.info("GET /events/{} with request header: {}={}", eventId, USER_ID_HEADER, userId);
 
-        eventService.sendHit(request);
-        EventDto eventDto = eventService.findPublishedEvent(eventId);
-        log.info("Возвращено событие с ID={}", eventDto.getId());
+        EventDto eventDto = eventService.findPublishedEvent(eventId, userId);
+        log.info("Возвращено событие с ID={} по запросу пользователя с ID={}", eventDto.getId(), userId);
 
         return ResponseEntity.ok(eventDto);
+    }
+
+    @GetMapping("/recommendations")
+    public ResponseEntity<List<EventDto>> getRecommendations(@RequestHeader(USER_ID_HEADER) Long userId) {
+        log.info("GET /events/recommendations with request header: {}={}", USER_ID_HEADER, userId);
+
+        List<EventDto> recommendations = eventService.getRecommendations(userId);
+        log.info("Возвращено {} рекомендаций для пользователя с ID={}", recommendations.size(), userId);
+
+        return ResponseEntity.ok(recommendations);
+    }
+
+    @PutMapping("/{eventId}/like")
+    public ResponseEntity<Void> addLike(
+            @RequestHeader(USER_ID_HEADER) Long userId,
+            @PathVariable Long eventId
+    ) {
+        log.info("PUT /events/{}/like with request header: {}={}", eventId, USER_ID_HEADER, userId);
+
+        eventService.addLike(eventId, userId);
+        return ResponseEntity.noContent().build();
     }
 }

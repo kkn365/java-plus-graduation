@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package user_actions;
+
+option java_multiple_files = true;
+option java_package = "ru.practicum.recommendations.messages";
+import "google/protobuf/timestamp.proto";
+
+// Типы действий пользователя
+enum ActionTypeProto {
+  ACTION_VIEW = 0;      // Просмотр страницы мероприятия
+  ACTION_REGISTER = 1;  // Заявка на участие
+  ACTION_LIKE = 2;      // Положительная оценка/лайк
+}
+
+// Действие пользователя, отправляемое в систему рекомендаций
+message UserActionProto {
+  int64 user_id = 1;                        // Идентификатор пользователя
+  int64 event_id = 2;                       // Идентификатор мероприятия
+  ActionTypeProto action_type = 3;          // Тип пользовательского действия
+  google.protobuf.Timestamp timestamp = 4;  // Момент совершения действия
+}

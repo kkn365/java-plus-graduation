@@ -1,5 +1,6 @@
 package ru.practicum.core.request.service;
 
+import com.google.protobuf.Timestamp;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,8 +22,13 @@ import ru.practicum.core.request.mapper.EventRequestsCountMapper;
 import ru.practicum.core.request.mapper.ParticipationRequestMapper;
 import ru.practicum.core.request.model.ParticipationRequest;
 import ru.practicum.core.request.repository.RequestRepository;
+import ru.practicum.recomm.client.CollectorClient;
+import ru.practicum.recommendations.messages.ActionTypeProto;
+import ru.practicum.recommendations.messages.UserActionProto;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -50,6 +56,7 @@ public class RequestServiceImpl implements RequestService {
 
     private final UserClient userClient;
     private final EventClient eventClient;
+    private final CollectorClient collectorClient;
 
     /**
      * Возвращает список всех запросов текущего пользователя.
@@ -66,16 +73,22 @@ public class RequestServiceImpl implements RequestService {
     }
 
     /**
-     * Создаёт новый запрос на участие в событии.
+     * Создаёт новую заявку на участие в событии от имени пользователя.
      * <p>
-     * Выполняет полную проверку: существование пользователя и события, доступность события,
-     * отсутствие дублирующих запросов и соответствие квоты участников.
+     * Метод выполняет следующие проверки:
+     * - Существует ли пользователь с указанным идентификатором.
+     * - Существует ли событие, доступно ли оно для участия и опубликовано ли оно.
+     * - Не является ли пользователь инициатором события.
+     * - Не отправлял ли пользователь ранее заявку на это событие.
+     * - Не превышена ли максимальная вместимость события (если ограничена).
+     * <p>
+     * После успешных проверок создаётся заявка с начальным статусом и сохраняется в репозитории.
+     * Также отправляется действие пользователя в коллектор.
      *
-     * @param userId  Идентификатор пользователя
-     * @param eventId Идентификатор события
-     * @return DTO созданного запроса
-     * @throws ConflictException Если пользователь уже подал заявку или событие недоступно
-     * @throws NotFoundException Если пользователь или событие не найдены
+     * @param userId   уникальный идентификатор пользователя, который подаёт заявку
+     * @param eventId  уникальный идентификатор события, на которое подаётся заявка
+     * @return объект {@link ParticipationRequestDto}, представляющий созданную заявку
+     * @throws NotFoundException если пользователь или событие не найдены
      */
     @Override
     public ParticipationRequestDto createRequest(Long userId, Long eventId) {
@@ -96,6 +109,8 @@ public class RequestServiceImpl implements RequestService {
 
         ParticipationRequest saved = requestRepository.save(request);
         log.info("Создана заявка {} от пользователя {} на событие {}", saved.getId(), userId, eventId);
+        // Отправляем действие пользователя в коллектор
+        sendUserAction(userId, eventId, ActionTypeProto.ACTION_REGISTER);
         return participationRequestMapper.toDto(saved);
     }
 
@@ -365,4 +380,30 @@ public class RequestServiceImpl implements RequestService {
                         .collect(Collectors.toList()))
                 .build();
     }
+
+    /**
+     * Отправляет действие пользователя в коллектор.
+     * <p>
+     * Создаёт объект {@link UserActionProto} с текущим временем в формате UTC и передаёт его в сервис collectorClient.
+     *
+     * @param userId     идентификатор пользователя
+     * @param eventId    идентификатор события
+     * @param actionType тип действия (VIEW, LIKE и т.д.)
+     */
+    private void sendUserAction(Long userId, Long eventId, ActionTypeProto actionType) {
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("UTC"));
+        long epochSecond = now.atOffset(ZoneOffset.UTC).toEpochSecond();
+
+        UserActionProto userAction = UserActionProto.newBuilder()
+                .setUserId(userId)
+                .setEventId(eventId)
+                .setActionType(actionType)
+                .setTimestamp(Timestamp.newBuilder().setSeconds(epochSecond).build())
+                .build();
+
+        collectorClient.newUserAction(userAction);
+        log.debug("В коллектор отправлено действие пользователя c ID={} с типом {} на событие c ID={}",
+                userId, actionType, eventId);
+    }
+
 }

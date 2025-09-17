@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package stats.service.dashboard;
+
+option java_multiple_files = true;
+option java_package = "ru.practicum.recommendations.services";
+
+import "recommendations/messages/user_predictions.proto";
+
+/**
+ * Сервис для работы с рекомендациями пользователю.
+ *
+ * Предоставляет методы получения рекомендуемых мероприятий, похожих мероприятий и подсчёта взаимодействий.
+ */
+service RecommendationsController {
+  /**
+   * GetRecommendationsForUser — возвращает поток рекомендуемых мероприятий для указанного пользователя.
+   *
+   * @param request - объект типа `UserPredictionsRequest`, содержащий:
+   *                - user_id: идентификатор пользователя,
+   *                - max_results: максимальное количество рекомендаций.
+   * @return поток объектов типа `RecommendedEvent`, каждый из которых содержит:
+   *         - event_id: идентификатор рекомендуемого мероприятия,
+   *         - score: оценка релевантности мероприятия.
+   */
+  rpc GetRecommendationsForUser(recommendation_messages.UserPredictionsRequest)
+      returns (stream recommendation_messages.RecommendedEvent);
+
+  /**
+   * GetSimilarEvents — возвращает поток мероприятий, похожих на указанное.
+   *
+   * @param request - объект типа `SimilarEventsRequest`, содержащий:
+   *                - event_id: идентификатор мероприятия, для которого ищутся похожие,
+   *                - user_id: идентификатор пользователя (используется для исключения уже взаимодействовавших мероприятий),
+   *                - max_results: максимальное количество результатов.
+   * @return поток объектов типа `RecommendedEvent`, каждый из которых содержит:
+   *         - event_id: идентификатор похожего мероприятия,
+   *         - score: оценка сходства.
+   */
+  rpc GetSimilarEvents(recommendation_messages.SimilarEventsRequest)
+      returns (stream recommendation_messages.RecommendedEvent);
+
+  /**
+   * GetInteractionsCount — возвращает поток информации о количестве взаимодействий с указанными мероприятиями.
+   *
+   * @param request - объект типа `InteractionsCountRequest`, содержащий:
+   *                - event_ids: список идентификаторов мероприятий, для которых требуется подсчёт взаимодействий.
+   * @return поток объектов типа `RecommendedEvent`, где:
+   *         - event_id: идентификатор мероприятия,
+   *         - score: количество взаимодействий.
+   */
+  rpc GetInteractionsCount(recommendation_messages.InteractionsCountRequest)
+      returns (stream recommendation_messages.RecommendedEvent);
+}

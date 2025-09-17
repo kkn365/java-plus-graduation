@@ -53,10 +53,10 @@ public class UserEventParams {
 
     /**
      * Критерий сортировки событий.
-     * Допустимые значения: EVENT_DATE (по дате), VIEWS (по просмотрам).
+     * Допустимые значения: EVENT_DATE (по дате), RATING (по рейтингу).
      */
     @Builder.Default
-    private EventSort sort = EventSort.VIEWS;
+    private EventSort sort = EventSort.RATING;
 
     /**
      * Начальная позиция для пагинации (смещение).

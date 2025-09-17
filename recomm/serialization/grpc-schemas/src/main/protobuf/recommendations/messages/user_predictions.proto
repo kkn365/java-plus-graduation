@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package recommendation_messages;
+
+option java_multiple_files = true;
+option java_package = "ru.practicum.recommendations.messages";
+
+/**
+ * Запрос на получение рекомендаций для конкретного пользователя.
+ *
+ * Содержит идентификатор пользователя и максимальное количество возвращаемых рекомендаций.
+ */
+message UserPredictionsRequest {
+  int64 user_id = 1;
+  int64 max_results = 2;
+}
+
+/**
+ * Запрос на поиск мероприятий, похожих на указанное.
+ *
+ * Содержит идентификатор мероприятия, идентификатор пользователя (для исключения уже взаимодействовавших мероприятий)
+ * и максимальное количество результатов.
+ */
+message SimilarEventsRequest {
+  int64 event_id = 1;
+  int64 user_id = 2;
+  int64 max_results = 3;
+}
+
+/**
+ * Запрос на подсчёт количества взаимодействий с указанными мероприятиями.
+ *
+ * Содержит список идентификаторов мероприятий.
+ */
+message InteractionsCountRequest {
+  repeated int64 event_ids = 1;
+}
+
+/**
+ * Рекомендуемое мероприятие.
+ *
+ * Содержит идентификатор мероприятия и оценку его релевантности.
+ */
+message RecommendedEvent {
+  int64 event_id = 1;
+  double score = 2;
+}

@@ -11,7 +11,11 @@ import org.springframework.context.annotation.ComponentScan;
 @SpringBootApplication
 @ConfigurationPropertiesScan
 @EnableFeignClients(basePackages = {"ru.practicum.core.api", "ru.practicum.stats.client"})
-@ComponentScan(basePackages = {"ru.practicum.core.event", "ru.practicum.core.api"})
+@ComponentScan(basePackages = {
+        "ru.practicum.core.event",
+        "ru.practicum.core.api",
+        "ru.practicum.recomm.client"
+})
 public class EventServiceApp {
     public static void main(String[] args) {
         SpringApplication.run(EventServiceApp.class, args);
