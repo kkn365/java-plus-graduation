@@ -28,6 +28,7 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Без него не работает, требуется для обратной совместимости  -->
         <dependency>
             <groupId>javax.annotation</groupId>
             <artifactId>javax.annotation-api</artifactId>
