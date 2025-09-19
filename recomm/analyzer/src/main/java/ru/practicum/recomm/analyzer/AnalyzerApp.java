@@ -6,8 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.context.annotation.ComponentScan;
 
-@EnableDiscoveryClient
 @SpringBootApplication
+@EnableDiscoveryClient
 @ConfigurationPropertiesScan
 @ComponentScan(basePackages = {
         "ru.practicum.recomm.analyzer",

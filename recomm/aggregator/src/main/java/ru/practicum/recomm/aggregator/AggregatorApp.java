@@ -6,12 +6,14 @@ import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfig
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication(exclude = {
         DataSourceAutoConfiguration.class,
         JpaRepositoriesAutoConfiguration.class,
         HibernateJpaAutoConfiguration.class
 })
+@EnableDiscoveryClient
 @ConfigurationPropertiesScan
 public class AggregatorApp {
     public static void main(String[] args) {
