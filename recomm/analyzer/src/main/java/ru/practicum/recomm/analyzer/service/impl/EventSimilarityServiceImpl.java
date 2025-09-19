@@ -35,6 +35,7 @@ public class EventSimilarityServiceImpl implements EventSimilarityService {
     public void handleEventSimilarity(EventSimilarityAvro eventSimilarityAvro) {
         log.info("Обработка события схожести: {}", eventSimilarityAvro);
 
+        // MapStruct отказывается корректно работать с временными метками в Avro
         EventSimilarity eventSimilarity = EventSimilarity.builder()
                 .sourceEventId(eventSimilarityAvro.getEventA())
                 .targetEventId(eventSimilarityAvro.getEventB())

@@ -30,7 +30,11 @@ public interface EventSimilarityRepository extends JpaRepository<EventSimilarity
      * @param targetEventId идентификатор второго мероприятия
      * @return List<EventSimilarity> — список связанных записей
      */
-    @Query("SELECT es FROM EventSimilarity es WHERE es.sourceEventId = :sourceEventId OR es.targetEventId = :targetEventId")
+    @Query("""
+            SELECT es
+            FROM EventSimilarity es
+            WHERE es.sourceEventId = :sourceEventId OR es.targetEventId = :targetEventId
+            """)
     List<EventSimilarity> findAllBySourceEventIdOrTargetEventId(Long sourceEventId, Long targetEventId);
 
     /**
@@ -39,7 +43,10 @@ public interface EventSimilarityRepository extends JpaRepository<EventSimilarity
      * @param targetEventIds список идентификаторов вторых мероприятий
      * @return List<EventSimilarity> — список связанных записей
      */
-    @Query("SELECT DISTINCT es FROM EventSimilarity es " +
-            "WHERE es.sourceEventId IN :sourceEventIds OR es.targetEventId IN :targetEventIds")
+    @Query("""
+            SELECT DISTINCT es
+            FROM EventSimilarity es
+            WHERE es.sourceEventId IN :sourceEventIds OR es.targetEventId IN :targetEventIds
+            """)
     List<EventSimilarity> findAllBySourceEventIdInOrTargetEventIdIn(Set<Long> sourceEventIds, Set<Long> targetEventIds);
 }
