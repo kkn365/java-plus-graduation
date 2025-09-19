@@ -1,5 +1,11 @@
 package ru.practicum.core.event.controller.external.pub;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -8,10 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.core.api.internal.event.dto.EventDto;
-import ru.practicum.core.event.dto.events.UserEventParams;
-import ru.practicum.core.event.model.enums.events.EventSort;
-import ru.practicum.core.event.service.api.EventService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,11 +21,17 @@ import java.util.List;
 import static ru.practicum.core.api.util.constants.DateTimeFormatConstants.DATE_TIME_FORMAT;
 import static ru.practicum.core.api.util.constants.PaginationConstants.*;
 
+import ru.practicum.core.api.internal.event.dto.EventDto;
+import ru.practicum.core.event.dto.events.UserEventParams;
+import ru.practicum.core.event.model.enums.events.EventSort;
+import ru.practicum.core.event.service.api.EventService;
+
 /**
  * Контроллер для публичного доступа к событиям.
  * <p>
  * Обрабатывает GET-запросы на получение списка событий и отдельного события.
  */
+@Tag(name = "Public: События", description = "Операции для получения информации о мероприятиях (публичный доступ)")
 @Slf4j
 @RequiredArgsConstructor
 @RestController
@@ -49,6 +57,13 @@ public class PublicEventsController {
      * @param size           Размер страницы
      * @return ResponseEntity со списком событий
      */
+    @Operation(summary = "Получить список мероприятий",
+            description = "Возвращает список мероприятий, соответствующих заданным фильтрам. Доступно всем пользователям.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Список мероприятий успешно получен",
+                    content = @Content(schema = @Schema(implementation = List.class, example = "[...]", type = "array"))),
+            @ApiResponse(responseCode = "500", description = "Ошибка сервера")
+    })
     @GetMapping
     public ResponseEntity<List<EventDto>> getEvents(
             HttpServletRequest request,
@@ -78,21 +93,26 @@ public class PublicEventsController {
                 .build();
 
         List<EventDto> events = eventService.findAllByUserParams(userEventParams);
-        log.info("Возвращено {} событий", events.size());
+        log.info("Возвращено {} мероприятий", events.size());
 
         return ResponseEntity.ok(events);
     }
 
     /**
      * Возвращает информацию о конкретном мероприятии по его идентификатору.
-     * <p>
-     * Метод извлекает идентификатор пользователя из HTTP-заголовка, вызывает сервис для получения данных о мероприятии,
-     * логирует операцию и возвращает результат в виде объекта {@link EventDto}.
      *
-     * @param userId   идентификатор пользователя, запрашивающего мероприятие
-     * @param eventId  идентификатор мероприятия, которое необходимо получить
-     * @return ResponseEntity с данными мероприятия и статусом 200 OK
+     * @param userId   Идентификатор пользователя, запрашивающего мероприятие
+     * @param eventId  Идентификатор мероприятия, которое необходимо получить
+     * @return ResponseEntity с данными мероприятия
      */
+    @Operation(summary = "Получить мероприятие по ID",
+            description = "Возвращает информацию о конкретном мероприятии по его идентификатору.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Информация о мероприятии успешно получена",
+                    content = @Content(schema = @Schema(implementation = EventDto.class))),
+            @ApiResponse(responseCode = "404", description = "Мероприятие не найдено"),
+            @ApiResponse(responseCode = "500", description = "Ошибка сервера")
+    })
     @GetMapping("/{eventId}")
     public ResponseEntity<EventDto> getPublishedEvent(
             @RequestHeader(USER_ID_HEADER) Long userId,
@@ -101,20 +121,24 @@ public class PublicEventsController {
         log.info("GET /events/{} with request header: {}={}", eventId, USER_ID_HEADER, userId);
 
         EventDto eventDto = eventService.findPublishedEvent(eventId, userId);
-        log.info("Возвращено событие с ID={} по запросу пользователя с ID={}", eventDto.getId(), userId);
+        log.info("Возвращено мероприятие с ID={} по запросу пользователя с ID={}", eventDto.getId(), userId);
 
         return ResponseEntity.ok(eventDto);
     }
 
     /**
      * Возвращает список рекомендуемых мероприятий для указанного пользователя.
-     * <p>
-     * Метод извлекает идентификатор пользователя из заголовка запроса, запрашивает рекомендации у сервиса,
-     * логирует результат и возвращает его в виде JSON-списка объектов {@link EventDto}.
      *
-     * @param userId идентификатор пользователя, для которого запрашиваются рекомендации
-     * @return ResponseEntity со списком рекомендуемых мероприятий и статусом 200 OK
+     * @param userId Идентификатор пользователя, для которого запрашиваются рекомендации
+     * @return ResponseEntity со списком рекомендуемых мероприятий
      */
+    @Operation(summary = "Получить рекомендации",
+            description = "Возвращает список рекомендуемых мероприятий для пользователя.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Список рекомендаций успешно получен",
+                    content = @Content(schema = @Schema(implementation = List.class, example = "[...]", type = "array"))),
+            @ApiResponse(responseCode = "500", description = "Ошибка сервера")
+    })
     @GetMapping("/recommendations")
     public ResponseEntity<List<EventDto>> getRecommendations(@RequestHeader(USER_ID_HEADER) Long userId) {
         log.info("GET /events/recommendations with request header: {}={}", USER_ID_HEADER, userId);
@@ -127,14 +151,18 @@ public class PublicEventsController {
 
     /**
      * Добавляет лайк к указанному мероприятию от имени пользователя.
-     * <p>
-     * Метод извлекает идентификатор пользователя из HTTP-заголовка, вызывает соответствующий метод сервиса,
-     * и возвращает ответ без содержимого (204 No Content), если операция прошла успешно.
      *
-     * @param userId   идентификатор пользователя, который ставит лайк
-     * @param eventId  идентификатор мероприятия, которому ставится лайк
+     * @param userId   Идентификатор пользователя, который ставит лайк
+     * @param eventId  Идентификатор мероприятия, которому ставится лайк
      * @return ResponseEntity с кодом 204 No Content
      */
+    @Operation(summary = "Добавить лайк к мероприятию",
+            description = "Позволяет пользователю поставить лайк на мероприятие.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Лайк успешно добавлен"),
+            @ApiResponse(responseCode = "404", description = "Мероприятие не найдено"),
+            @ApiResponse(responseCode = "500", description = "Ошибка сервера")
+    })
     @PutMapping("/{eventId}/like")
     public ResponseEntity<Void> addLike(
             @RequestHeader(USER_ID_HEADER) Long userId,

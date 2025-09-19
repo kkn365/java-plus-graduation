@@ -1,5 +1,6 @@
 package ru.practicum.core.event.dto.compilations;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -27,6 +28,7 @@ public class NewCompilationDto {
      * <p>
      * Может быть пустым, если события добавятся позже.
      */
+    @Schema(description = "Список идентификаторов событий для подборки", example = "[100, 200, 300]")
     private Set<Long> events;
 
     /**
@@ -35,6 +37,7 @@ public class NewCompilationDto {
      * True — подборка будет отображаться на главной странице.
      * По умолчанию: false.
      */
+    @Schema(description = "Флаг закрепления (true — отображается на главной странице)", example = "false")
     @Builder.Default
     private Boolean pinned = false;
 
@@ -46,5 +49,11 @@ public class NewCompilationDto {
      */
     @NotBlank(message = "Заголовок не может быть пустым")
     @Size(min = 1, max = 50, message = "Заголовок должен быть от 1 до 50 символов")
+    @Schema(
+            description = "Заголовок подборки",
+            example = "События этой недели",
+            required = true,
+            minLength = 1,
+            maxLength = 50)
     private String title;
 }

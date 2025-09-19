@@ -50,6 +50,8 @@
 		<avro-maven-plugin.version>${avro.version}</avro-maven-plugin.version>
 		<protobuf-plugin.version>2.4.0</protobuf-plugin.version>
 
+		<!-- Doc -->
+		<springdoc-openapi-ui.version>1.8.0</springdoc-openapi-ui.version>
 	</properties>
 
 	<dependencyManagement>
@@ -130,6 +132,13 @@
 				<version>${spring-cloud.version}</version>
 				<type>pom</type>
 				<scope>import</scope>
+			</dependency>
+
+			<!-- OpenApi Doc -->
+			<dependency>
+				<groupId>org.springdoc</groupId>
+				<artifactId>springdoc-openapi-ui</artifactId>
+				<version>${springdoc-openapi-ui.version}</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
