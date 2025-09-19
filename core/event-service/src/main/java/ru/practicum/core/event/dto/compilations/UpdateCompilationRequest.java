@@ -1,5 +1,6 @@
 package ru.practicum.core.event.dto.compilations;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,6 +28,7 @@ public class UpdateCompilationRequest {
      * <p>
      * Может быть null — в этом случае список событий не изменяется.
      */
+    @Schema(description = "Список идентификаторов событий", example = "[100, 200, 300]", nullable = true)
     private Set<Long> events;
 
     /**
@@ -35,6 +37,10 @@ public class UpdateCompilationRequest {
      * True — подборка отображается на главной странице, false — нет.
      * Может быть null — в этом случае флаг не изменяется.
      */
+    @Schema(
+            description = "Флаг закрепления подборки",
+            example = "false",
+            nullable = true)
     private Boolean pinned;
 
     /**
@@ -44,5 +50,11 @@ public class UpdateCompilationRequest {
      * Примеры допустимых значений: "События этой недели", "Концерты в Москве".
      */
     @Size(min = 1, max = 50, message = "Заголовок должен быть от 1 до 50 символов")
+    @Schema(
+            description = "Заголовок подборки",
+            example = "События этой недели",
+            required = true,
+            minLength = 1,
+            maxLength = 50)
     private String title;
 }

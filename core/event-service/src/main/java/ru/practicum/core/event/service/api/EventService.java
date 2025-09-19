@@ -1,6 +1,5 @@
 package ru.practicum.core.event.service.api;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ValidationException;
 import ru.practicum.core.api.exception.ConflictException;
 import ru.practicum.core.api.exception.NotFoundException;
@@ -114,23 +113,13 @@ public interface EventService {
     List<EventDto> findAllByUserParams(UserEventParams userEventParams);
 
     /**
-     * Отправляет информацию о хите (просмотре) в сервис статистики.
-     *
-     * @param request объект HTTP-запроса
-     * @throws RuntimeException если произошла ошибка при отправке данных статистике
-     */
-    void sendHit(HttpServletRequest request);
-
-    /**
-     * Получает событие в состоянии ОПУБЛИКОВАНО.
+     * Возвращает информацию об опубликованном мероприятии по его идентификатору.
      * <p>
-     * Если событие не опубликовано, выбрасывается NotFoundException.
-     *
-     * @param eventId идентификатор события
-     * @return DTO события
-     * @throws NotFoundException если событие не найдено или не опубликовано
+     * @param eventId идентификатор мероприятия, которое требуется получить
+     * @param userId  идентификатор пользователя, запрашивающего мероприятие
+     * @return объект типа {@link EventDto}, содержащий данные о мероприятии
      */
-    EventDto findPublishedEvent(Long eventId);
+    EventDto findPublishedEvent(Long eventId, Long userId);
 
     /**
      * Получает событие по идентификатору.
@@ -145,10 +134,28 @@ public interface EventService {
 
     /**
      * Получает список событий, инициированных указанным пользователем.
-     *
+     * <p>
      * @param initiatorId идентификатор пользователя-инициатора
      * @return список DTO событий
      * @throws NotFoundException если пользователь не найден
      */
     List<EventDto> findAllEventsByInitiatorId(Long initiatorId);
+
+    /**
+     * Возвращает список рекомендованных мероприятий для указанного пользователя.
+     * <p>
+     * Метод формирует персонализированные рекомендации на основе ранее рассчитанных коэффициентов схожести между мероприятиями.
+     *
+     * @param userId идентификатор пользователя, для которого запрашиваются рекомендации
+     * @return список объектов типа {@link EventDto}, представляющих рекомендуемые мероприятия
+     */
+    List<EventDto> getRecommendations(Long userId);
+
+    /**
+     * Добавляет лайк к указанному мероприятию от имени пользователя.
+     * <p>
+     * @param eventId идентификатор мероприятия, которому ставится лайк
+     * @param userId  идентификатор пользователя, который ставит лайк
+     */
+    void addLike(Long eventId, Long userId);
 }

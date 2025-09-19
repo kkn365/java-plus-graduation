@@ -12,16 +12,16 @@
 
     <artifactId>request-service</artifactId>
 
-    <properties>
-        <!-- Управление версиями зависимостей -->
-        <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
-    </properties>
-
     <dependencies>
         <!-- Общие API -->
         <dependency>
             <groupId>ru.practicum</groupId>
             <artifactId>interaction-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ru.practicum</groupId>
+            <artifactId>recomm-client</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -111,6 +111,12 @@
             <artifactId>mapstruct-processor</artifactId>
             <version>${org.mapstruct.version}</version>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- Doc -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-ui</artifactId>
         </dependency>
     </dependencies>
 

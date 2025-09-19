@@ -1,5 +1,6 @@
 package ru.practicum.core.request.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -19,6 +20,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "DTO для изменения статуса заявок (CONFIRMED / REJECTED)")
 public class ChangeRequestStatusDto {
 
     /**
@@ -28,6 +30,10 @@ public class ChangeRequestStatusDto {
      */
     @NotNull(message = "Список заявок не может быть пустым")
     @Size(min = 1, message = "Минимум одна заявка должна быть указана")
+    @Schema(
+            description = "Список идентификаторов заявок",
+            example = "[1, 2, 3]",
+            required = true)
     private List<Long> requestIds;
 
     /**
@@ -36,5 +42,10 @@ public class ChangeRequestStatusDto {
      * Обязательное поле. Допустимые значения: CONFIRMED, REJECTED.
      */
     @NotNull(message = "Статус не может быть пустым")
+    @Schema(
+            description = "Новый статус заявки",
+            example = "CONFIRMED",
+            allowableValues = {"CONFIRMED", "REJECTED"},
+            required = true)
     private RequestStatus status;
 }

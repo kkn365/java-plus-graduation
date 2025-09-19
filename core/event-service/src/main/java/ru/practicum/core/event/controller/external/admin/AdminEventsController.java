@@ -1,5 +1,11 @@
 package ru.practicum.core.event.controller.external.admin;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +32,7 @@ import ru.practicum.core.event.service.api.EventService;
  * Обрабатывает запросы на получение и обновление событий, фильтруя по параметрам: пользователь, категория,
  * статус события, временной диапазон и пагинация.
  */
+@Tag(name = "Admin: События", description = "Операции для управления событиями (администратор)")
 @Slf4j
 @RequiredArgsConstructor
 @RestController
@@ -48,6 +55,14 @@ public class AdminEventsController {
      * @param size       Размер страницы для пагинации
      * @return ResponseEntity со списком DTO событий
      */
+    @Operation(summary = "Получить список событий",
+            description = "Позволяет получить список событий с фильтрацией по пользователям, категориям, статусу и временным рамкам.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Список событий успешно получен",
+                    content = @Content(schema = @Schema(implementation = List.class, example = "[...]", type = "array"))),
+            @ApiResponse(responseCode = "401", description = "Нет доступа"),
+            @ApiResponse(responseCode = "500", description = "Ошибка сервера")
+    })
     @GetMapping
     public ResponseEntity<List<EventDto>> getEvents(
             @RequestParam(required = false) List<Long> users,
@@ -86,6 +101,15 @@ public class AdminEventsController {
      * @param eventDto DTO с данными для обновления события
      * @return ResponseEntity с обновлённым DTO события
      */
+    @Operation(summary = "Обновить событие",
+            description = "Обновляет событие администратором по его идентификатору.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Событие успешно обновлено",
+                    content = @Content(schema = @Schema(implementation = EventDto.class))),
+            @ApiResponse(responseCode = "400", description = "Неверные входные данные"),
+            @ApiResponse(responseCode = "404", description = "Событие с указанным ID не найдено"),
+            @ApiResponse(responseCode = "500", description = "Ошибка сервера")
+    })
     @PatchMapping("/{eventId}")
     public ResponseEntity<EventDto> updateEventByAdmin(
             @PathVariable Long eventId,

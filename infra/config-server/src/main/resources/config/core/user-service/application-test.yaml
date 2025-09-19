@@ -35,3 +35,16 @@ logging:
           jpa.JpaTransactionManager: DEBUG  # Логирование транзакций JPA
         transaction:
           TransactionInterceptor: DEBUG  # Логирование Spring Transaction Interceptor
+
+grpc:
+  client:
+    analyzer:
+      address: 'discovery:///analyzer'
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext
+    collector:
+      address: 'discovery:///collector'
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext

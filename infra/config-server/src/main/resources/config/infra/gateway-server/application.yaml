@@ -33,11 +33,6 @@ spring:
               predicates:
                 - Path=/admin/**, /compilations/**, /categories/**, /events/**, /users/**
 
-            - id: stats-server
-              uri: lb://stats-server
-              predicates:
-                - Path=/hit/**, /stats/**
-
 logging:
   level:
     org.springframework.cloud.gateway: DEBUG

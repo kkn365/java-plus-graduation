@@ -1,27 +1,31 @@
 package ru.practicum.core.event.controller.external.pub;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-import ru.practicum.core.api.exception.NotFoundException;
-import ru.practicum.core.event.dto.compilations.CompilationDto;
-import ru.practicum.core.event.service.api.CompilationService;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 import static ru.practicum.core.api.util.constants.PaginationConstants.*;
+
+import ru.practicum.core.api.exception.NotFoundException;
+import ru.practicum.core.event.dto.compilations.CompilationDto;
+import ru.practicum.core.event.service.api.CompilationService;
 
 /**
  * Контроллер для обработки публичных запросов, связанных с подборками событий.
  * <p>
  * Предоставляет методы для получения списка подборок и информации о конкретной подборке.
  */
+@Tag(name = "Public: Подборки событий", description = "Операции для получения информации о подборках событий (публичный доступ)")
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -43,6 +47,13 @@ public class PublicCompilationsController {
      * @param size   количество возвращаемых записей на странице
      * @return ResponseEntity с списком DTO подборок событий
      */
+    @Operation(summary = "Получить список подборок",
+            description = "Возвращает список подборок событий. Возможна фильтрация по флагу закрепления и пагинация.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Список подборок успешно получен",
+                    content = @Content(schema = @Schema(implementation = List.class, example = "[...]", type = "array"))),
+            @ApiResponse(responseCode = "500", description = "Ошибка сервера")
+    })
     @GetMapping
     public ResponseEntity<List<CompilationDto>> getAll(
             @RequestParam(required = false) Boolean pinned,
@@ -62,6 +73,14 @@ public class PublicCompilationsController {
      * @return ResponseEntity с DTO подборки событий
      * @throws NotFoundException если подборка с указанным ID не найдена
      */
+    @Operation(summary = "Получить подборку по ID",
+            description = "Возвращает информацию о конкретной подборке событий по её идентификатору.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Информация о подборке успешно получена",
+                    content = @Content(schema = @Schema(implementation = CompilationDto.class))),
+            @ApiResponse(responseCode = "404", description = "Подборка с указанным ID не найдена"),
+            @ApiResponse(responseCode = "500", description = "Ошибка сервера")
+    })
     @GetMapping("/{compId}")
     public ResponseEntity<CompilationDto> getById(@PathVariable Long compId) {
         log.info("GET /compilations/{}", compId);

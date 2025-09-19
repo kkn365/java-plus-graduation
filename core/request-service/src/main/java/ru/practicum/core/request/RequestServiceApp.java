@@ -18,7 +18,8 @@ import org.springframework.context.annotation.ComponentScan;
 })
 @ComponentScan(basePackages = {
         "ru.practicum.core.request",
-        "ru.practicum.core.api"
+        "ru.practicum.core.api",
+        "ru.practicum.recomm.client"
 })
 public class RequestServiceApp {
     public static void main(String[] args) {

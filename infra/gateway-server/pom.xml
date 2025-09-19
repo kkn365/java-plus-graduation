@@ -12,6 +12,10 @@
 
     <artifactId>gateway-server</artifactId>
 
+    <properties>
+        <spring-cloud-starter-gateway-server-webflux.version>4.3.0</spring-cloud-starter-gateway-server-webflux.version>
+    </properties>
+
     <dependencies>
         <!-- Core Spring Boot Starter -->
         <dependency>
@@ -23,6 +27,7 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
+            <version>${spring-cloud-starter-gateway-server-webflux.version}</version>
         </dependency>
 
         <!-- Actuator: для мониторинга и управления приложением -->

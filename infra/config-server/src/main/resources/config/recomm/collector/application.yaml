@@ -1,0 +1,23 @@
+server:
+  port: 0
+
+grpc:
+  server:
+    port: 59091
+    reflection-service-enabled: true
+
+# Автоматическое связывание с KafkaTemplate
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      client-id: "recomm.collector"
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: ru.practicum.recomm.kafka.serializer.GeneralAvroSerializer
+
+# Маппинг логических имен топиков на реальные имена в Kafka
+collector:
+  kafka:
+    producer:
+      topics:
+        user-actions: "stats.user-actions.v1"

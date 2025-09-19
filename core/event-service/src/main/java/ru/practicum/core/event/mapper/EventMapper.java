@@ -54,7 +54,7 @@ public interface EventMapper {
      * Поля views и confirmedRequests игнорируются, так как они обновляются отдельно.
      */
     @Mappings({
-            @Mapping(target = "views", ignore = true),
+            @Mapping(target = "rating", ignore = true),
             @Mapping(target = "confirmedRequests", ignore = true),
             @Mapping(source = "locationLat", target = "location.lat"),
             @Mapping(source = "locationLon", target = "location.lon"),
@@ -74,7 +74,7 @@ public interface EventMapper {
      */
     @Mappings({
             @Mapping(target = "id", source = "event.id"),
-            @Mapping(target = "views", ignore = true),
+            @Mapping(target = "rating", ignore = true),
             @Mapping(target = "confirmedRequests", ignore = true),
             @Mapping(source = "event.locationLat", target = "location.lat"),
             @Mapping(source = "event.locationLon", target = "location.lon"),

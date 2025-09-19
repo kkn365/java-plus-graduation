@@ -1,0 +1,32 @@
+grpc:
+  server:
+    port: 0
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update  # Включает автоматическое обновление схемы БД в тестах
+    properties:
+      hibernate:
+        format_sql: true  # Форматирование SQL-запросов в логах для удобства отладки
+
+  datasource:
+    dataSourceClassName: org.postgresql.ds.PGSimpleDataSource
+    url: jdbc:postgresql://localhost:6432/analytics_db  # URL к локальной БД
+    username: recomm-analyzer  # Имя пользователя БД
+    password: recomm-analyzer  # Пароль пользователя БД
+
+  # Автоматическое связывание с KafkaTemplate
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: "recomm.analyzer.consumer"
+      enable-auto-commit: false
+
+# Маппинг логических имен топиков на реальные имена в Kafka
+analyzer:
+  kafka:
+    consumer:
+      topics:
+        user-actions: "stats.user-actions.v1"
+        events-similarity: "stats.events-similarity.v1"

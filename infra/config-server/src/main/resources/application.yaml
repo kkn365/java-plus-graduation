@@ -11,7 +11,7 @@ spring:
       server:
         native:
           search-locations:
-            - classpath:config/stats/{application}  # Конфигурации для сервиса stats
+            - classpath:config/recomm/{application}  # Конфигурации для сервиса recomm
             - classpath:config/core/{application}   # Конфигурации для сервиса core
             - classpath:config/infra/{application}  # Конфигурации для инфраструктурных сервисов
 

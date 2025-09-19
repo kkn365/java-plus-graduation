@@ -1,0 +1,30 @@
+
+spring:
+  # Отключение автоматического связывания с JDBC
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.jdbc.JdbcRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+  # Автоматическое связывание с KafkaTemplate
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: "recomm.aggregator.consumer"
+      client-id: "recomm.aggregator"
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: ru.practicum.recomm.kafka.deserializer.UserActionDeserializer
+    producer:
+      client-id: "recomm.aggregator"
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: ru.practicum.recomm.kafka.serializer.GeneralAvroSerializer
+
+# Маппинг логических имен топиков на реальные имена в Kafka
+collector:
+  kafka:
+    consumer:
+      topics:
+        user-actions: "stats.user-actions.v1"
+    producer:
+      topics:
+        events-similarity: "stats.events-similarity.v1"

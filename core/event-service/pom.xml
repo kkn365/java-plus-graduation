@@ -12,21 +12,16 @@
 
     <artifactId>event-service</artifactId>
 
-    <properties>
-        <!-- Управление версиями зависимостей -->
-        <mapstruct.version>1.5.5.Final</mapstruct.version>
-    </properties>
-
     <dependencies>
         <!-- Общие API -->
         <dependency>
             <groupId>ru.practicum</groupId>
-            <artifactId>stats-client</artifactId>
+            <artifactId>interaction-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>ru.practicum</groupId>
-            <artifactId>interaction-api</artifactId>
+            <artifactId>recomm-client</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -107,13 +102,19 @@
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
-            <version>${mapstruct.version}</version>
+            <version>${org.mapstruct.version}</version>
         </dependency>
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct-processor</artifactId>
-            <version>${mapstruct.version}</version>
+            <version>${org.mapstruct.version}</version>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- Doc -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-ui</artifactId>
         </dependency>
     </dependencies>
 
