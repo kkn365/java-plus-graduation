@@ -12,14 +12,14 @@ protocol EventSimilarityProtocol {
 		 *
 		 * Представляет собой исходное мероприятие.
 		 */
-		long source_event_id;
+		long eventA;
 
 		/**
 		 * Идентификатор второго мероприятия в паре.
 		 *
 		 * Представляет собой мероприятие, похожее на первое.
 		 */
-		long target_event_id;
+		long eventB;
 
 		/**
 		 * Числовой показатель сходства между двумя мероприятиями.
@@ -28,13 +28,13 @@ protocol EventSimilarityProtocol {
 		 * - 0 означает полное отсутствие сходства,
 		 * - 1 означает полное совпадение.
 		 */
-		double similarity_score;
+		double score;
 
 		/**
 		 * Временная метка, указывающая, когда была рассчитана схожесть.
 		 *
 		 * Хранится в миллисекундах с эпохи Unix.
 		 */
-		timestamp_ms calculated_at;
+		timestamp_ms timestamp;
 	}
 }

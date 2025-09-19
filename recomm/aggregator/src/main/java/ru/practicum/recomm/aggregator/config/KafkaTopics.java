@@ -1,4 +1,4 @@
-package ru.practicum.recomm.collector.conf;
+package ru.practicum.recomm.aggregator.config;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -21,6 +21,6 @@ public class KafkaTopics {
     /**
      * Имя топика для пользовательских действий.
      */
-    @NotNull(message = "userActions не может быть null")
-    private String userActions;
+    @NotNull(message = "eventsSimilarity не может быть null")
+    private String eventsSimilarity;
 }

@@ -1,17 +1,17 @@
 package ru.practicum.recomm.aggregator.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
-import ru.practicum.recomm.aggregator.model.EventSimilarity;
 import ru.practicum.recommendations.avro.ActionTypeAvro;
 import ru.practicum.recommendations.avro.EventSimilarityAvro;
 import ru.practicum.recommendations.avro.UserActionAvro;
+import ru.practicum.recomm.aggregator.config.KafkaTopics;
 
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * Реализация сервиса AggregatorService для обработки пользовательских действий и вычисления схожести между мероприятиями.
@@ -19,33 +19,10 @@ import java.util.stream.Collectors;
  * Служит для анализа данных о взаимодействии пользователей с мероприятиями, обновления весовых коэффициентов и
  * отправки информации о схожести в Kafka-топик.
  */
-@Slf4j
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class AggregatorServiceImpl implements AggregatorService {
-
-    /**
-     * Хранилище весов взаимодействий между пользователями и мероприятиями.
-     * Ключ: id мероприятия, Значение: Map<id пользователя, вес взаимодействия>.
-     */
-    private final Map<Long, Map<Long, Double>> weightMap = new ConcurrentHashMap<>();
-
-    /**
-     * Хранилище сумм весов по каждому мероприятию.
-     * Ключ: id мероприятия, Значение: сумма весов всех пользователей.
-     */
-    private final Map<Long, Double> weightSumMap = new ConcurrentHashMap<>();
-
-    /**
-     * Хранилище минимальных сумм весов для пар мероприятий.
-     * Используется для расчёта схожести между событиями.
-     */
-    private final Map<Long, Map<Long, Double>> eventSimilarityScores = new ConcurrentHashMap<>();
-
-    /**
-     * Хранилище событий, с которыми взаимодействовал каждый пользователь.
-     * Ключ: id пользователя, Значение: множество id мероприятий.
-     */
-    private final Map<Long, Set<Long>> userEvents = new ConcurrentHashMap<>();
 
     /**
      * Шаблон Kafka для отправки сообщений в формате Avro.
@@ -53,206 +30,200 @@ public class AggregatorServiceImpl implements AggregatorService {
     private final KafkaTemplate<String, EventSimilarityAvro> kafkaTemplate;
 
     /**
-     * Конструктор класса.
-     *
-     * @param kafkaTemplate шаблон Kafka для отправки сообщений
+     * Настройки имен Kafka-топиков.
      */
-    public AggregatorServiceImpl(KafkaTemplate<String, EventSimilarityAvro> kafkaTemplate) {
-        this.kafkaTemplate = kafkaTemplate;
-    }
+    private final KafkaTopics kafkaTopics;
+
+    // === Матрица весов действий пользователей c мероприятиями ===
 
     /**
-     * Обрабатывает новое действие пользователя с мероприятием.
+     * Хранилище весов взаимодействий между пользователями и мероприятиями.
+     * Ключ: id мероприятия, Значение: Map<id пользователя, взаимодействие с максимальным весом>.
+     */
+    private final Map<Long, Map<Long, Double>> weightedUserActionsMatrix = new ConcurrentHashMap<>();
+
+    // === Хранилища частных сумм ===
+
+    /**
+     * 1. Хранилище общих сумм весов каждого из мероприятий.
+     * Ключ: id мероприятия, Значение: сумма весов действий пользователей с ним.
+     */
+    private final Map<Long, Double> totalWeights = new ConcurrentHashMap<>();
+
+    /**
+     * 2. Хранилище минимальных сумм весов для каждой пары мероприятий.
+     * Ключ: id мероприятия A, Значение: Map<id мероприятия B, сумма их минимальных весов>.
+     * Используется для расчёта схожести между событиями.
+     */
+    private final Map<Long, Map<Long, Double>> minWeightsSums = new ConcurrentHashMap<>();
+
+    /**
+     * Реализация метода обработки пользовательского действия.
      * <p>
-     * Выполняет проверку наличия события у пользователя, определяет новый рейтинг и вызывает соответствующую логику.
+     * При получении действия пользователя, рассчитывает коэффициенты схожести между мероприятиями,
+     * основываясь на новом весе взаимодействия. Если были рассчитаны новые коэффициенты — отправляет их в Kafka.
      *
-     * @param actionAvro объект с данными о пользовательском действии в формате Avro
+     * @param actionAvro объект, содержащий данные о пользовательском действии (ID пользователя, ID мероприятия, тип действия)
      */
     @Override
     public void processAction(UserActionAvro actionAvro) {
-        long userId = actionAvro.getUserId();
-        long eventId = actionAvro.getEventId();
-        double newRating = getActionRating(actionAvro.getActionType());
-
-        log.debug("Обработка действия пользователя {} с мероприятием {}", userId, eventId);
-
-        userEvents.computeIfAbsent(userId, k -> new HashSet<>());
-        if (!userEvents.get(userId).contains(eventId)) {
-            handleNewEvent(userId, eventId, newRating);
-        } else {
-            handleExistingEvent(userId, eventId, newRating);
+        log.info("Получено действие пользователя: {}", actionAvro);
+        List<EventSimilarityAvro> similarityList = updateSimilarities(actionAvro);
+        if (!similarityList.isEmpty()) {
+            log.info("Было рассчитано {} коэффициентов схожести", similarityList.size());
+            sendSimilarities(similarityList);
         }
     }
 
     /**
-     * Обрабатывает новое взаимодействие пользователя с мероприятием.
+     * Обновляет коэффициенты схожести между мероприятиями после получения нового пользовательского действия.
      * <p>
-     * Обновляет веса, суммы весов и события пользователя, а также запускает обновление схожести.
+     * Метод проверяет, является ли это первым взаимодействием пользователя с мероприятием. Если да —
+     * рассчитывает новые коэффициенты схожести. В противном случае сравнивает старый и новый вес взаимодействия
+     * и при необходимости пересчитывает коэффициенты схожести для всех других событий.
      *
-     * @param userId      идентификатор пользователя
-     * @param eventId     идентификатор мероприятия
-     * @param newRating   новый рейтинг взаимодействия
+     * @param actionAvro объект, содержащий данные о пользовательском действии:
+     *                   - userId — идентификатор пользователя
+     *                   - eventId — идентификатор мероприятия
+     *                   - actionType — тип действия (VIEW, REGISTER, LIKE и т.д.)
+     * @return список объектов EventSimilarityAvro — коэффициенты схожести, рассчитанные для данного события
      */
-    private void handleNewEvent(long userId, long eventId, double newRating) {
-        log.info("Новое взаимодействие пользователя {} с мероприятием {}", userId, eventId);
+    public List<EventSimilarityAvro> updateSimilarities(UserActionAvro actionAvro) {
+        Double weight = getActionWeight(actionAvro.getActionType());
+        Long userId = actionAvro.getUserId();
+        Long eventId = actionAvro.getEventId();
 
-        weightSumMap.compute(eventId, (k, v) -> v == null ? newRating : v + newRating);
-        weightMap.computeIfAbsent(eventId, k -> new ConcurrentHashMap<>())
-                .put(userId, newRating);
-
-        userEvents.get(userId).add(eventId);
-
-        updateSimilarities(userId, eventId, newRating);
-    }
-
-    /**
-     * Обрабатывает уже существующее взаимодействие пользователя с мероприятием.
-     * <p>
-     * Если новый рейтинг выше предыдущего, обновляет веса и суммы, а также запускает обновление схожести.
-     *
-     * @param userId      идентификатор пользователя
-     * @param eventId     идентификатор мероприятия
-     * @param newRating   новый рейтинг взаимодействия
-     */
-    private void handleExistingEvent(long userId, long eventId, double newRating) {
-        Map<Long, Double> eventUsers = weightMap.get(eventId);
-        double oldRating = eventUsers.get(userId);
-
-        if (newRating > oldRating) {
-            double delta = newRating - oldRating;
-            weightSumMap.put(eventId, weightSumMap.get(eventId) + delta);
-            eventUsers.replace(userId, newRating);
-
-            updateSimilarities(userId, eventId, newRating);
-        }
-    }
-
-    /**
-     * Обновляет схожесть между текущим мероприятием и всеми другими, с которыми взаимодействовал пользователь.
-     * <p>
-     * Вызывает методы для вычисления и отправки результатов.
-     *
-     * @param userId      идентификатор пользователя
-     * @param eventId     идентификатор мероприятия
-     * @param rating      рейтинг взаимодействия
-     */
-    private void updateSimilarities(long userId, long eventId, double rating) {
-        Set<Long> relatedEvents = getRelatedEvents(userId, eventId);
-
-        for (Long relatedEvent : relatedEvents) {
-            calculateAndUpdateSimilarity(eventId, relatedEvent, userId, rating);
+        if (!weightedUserActionsMatrix.containsKey(eventId)) {
+            log.info("Это первое взаимодействие с мероприятием ID={}", eventId);
+            return calculateNewSimilarities(eventId, userId, weight);
         }
 
-        sendSimilarities(eventId, userId);
-    }
+        Map<Long, Double> itemWeights = weightedUserActionsMatrix.get(eventId);
+        double oldWeight = itemWeights.getOrDefault(userId, 0.0);
+        double newWeight = Math.max(oldWeight, weight);
 
-    /**
-     * Получает список всех мероприятий, с которыми взаимодействовал пользователь, кроме текущего.
-     *
-     * @param userId          идентификатор пользователя
-     * @param currentEventId  идентификатор текущего мероприятия
-     * @return список связанных мероприятий
-     */
-    private Set<Long> getRelatedEvents(long userId, long currentEventId) {
-        return userEvents.get(userId)
-                .stream()
-                .filter(e -> !e.equals(currentEventId))
-                .collect(Collectors.toSet());
-    }
+        List<EventSimilarityAvro> similarities = new ArrayList<>();
 
-    /**
-     * Вычисляет и обновляет схожесть между двумя мероприятиями на основе нового рейтинга.
-     *
-     * @param eventA      идентификатор первого мероприятия
-     * @param eventB      идентификатор второго мероприятия
-     * @param userId      идентификатор пользователя
-     * @param newRating   новый рейтинг взаимодействия
-     */
-    private void calculateAndUpdateSimilarity(long eventA, long eventB, long userId, double newRating) {
-        double oldMin = Math.min(weightMap.get(eventA).get(userId), weightMap.get(eventB).get(userId));
-        double newMin = Math.min(newRating, weightMap.get(eventB).get(userId));
-        double delta = newMin - oldMin;
+        if (newWeight != oldWeight) {
+            log.info("Получена новая оценка '{}' пользователя ID={} для мероприятия ID={}", weight, userId, eventId);
+            itemWeights.put(userId, newWeight);
+            double eventAWeightDelta = newWeight - oldWeight;
+            totalWeights.merge(eventId, eventAWeightDelta, Double::sum);
 
-        if (delta > 0) {
-            put(eventA, eventB, get(eventA, eventB) + delta);
-        }
-    }
+            for (Long otherEventId : weightedUserActionsMatrix.keySet()) {
+                if (otherEventId.equals(eventId)) {
+                    continue;
+                }
 
-    /**
-     * Отправляет информацию о схожести мероприятий в Kafka-топик.
-     *
-     * @param eventId     идентификатор мероприятия
-     * @param userId      идентификатор пользователя
-     */
-    private void sendSimilarities(long eventId, long userId) {
-        List<EventSimilarity> similarities = calculateSimilarities(eventId, userId);
-        Instant timestamp = Instant.now();
-
-        similarities.forEach(event -> {
-            try {
-                EventSimilarityAvro avroEvent = createAvroEvent(event, timestamp);
-                kafkaTemplate.send(String.valueOf(avroEvent.getSourceEventId()), avroEvent);
-                log.info("Отправлено в Kafka: {}", avroEvent);
-            } catch (Exception e) {
-                log.error("Ошибка при отправке в Kafka: {}", event, e);
+                Optional<EventSimilarityAvro> similarity = updateSums(userId, eventId, otherEventId, oldWeight, newWeight);
+                similarity.ifPresent(similarities::add);
             }
-        });
+        }
+        return similarities;
     }
 
     /**
-     * Вычисляет список схожести текущего мероприятия с другими мероприятиями пользователя.
+     * Обновляет сумму минимальных весов между двумя мероприятиями и вычисляет коэффициент схожести.
+     * <p>
+     * Метод учитывает изменение веса взаимодействия пользователя с первым мероприятием (eventA)
+     * и пересчитывает коэффициент схожести между eventA и другим мероприятием (eventB) по формуле
+     * косинусного сходства. Если пользователь не взаимодействовал с eventB, возвращает пустой Optional.
      *
-     * @param eventA  идентификатор текущего мероприятия
-     * @param userId  идентификатор пользователя
-     * @return список схожести мероприятий
+     * @param userId             идентификатор пользователя
+     * @param eventA             идентификатор первого мероприятия
+     * @param eventB             идентификатор второго мероприятия
+     * @param eventAOldWeight    старый вес взаимодействия пользователя с eventA
+     * @param eventANewWeight    новый вес взаимодействия пользователя с eventA
+     * @return                   Optional<EventSimilarityAvro> — результат расчёта схожести,
+     *                           если он был успешно вычислен
      */
-    private List<EventSimilarity> calculateSimilarities(long eventA, long userId) {
-        return userEvents.get(userId)
-                .stream()
-                .filter(eventB -> !eventB.equals(eventA))
-                .map(eventB -> {
-                    double similarity = get(eventA, eventB) /
-                            (Math.sqrt(weightSumMap.get(eventA)) * Math.sqrt(weightSumMap.get(eventB)));
+    private Optional<EventSimilarityAvro> updateSums(
+            Long userId,
+            Long eventA,
+            Long eventB,
+            Double eventAOldWeight,
+            Double eventANewWeight
+    ) {
+        Double eventBWeight = weightedUserActionsMatrix.get(eventB).getOrDefault(userId, 0.0);
+        if (eventBWeight == 0.0) {
+            // Пользователь не взаимодействовал с мероприятием
+            return Optional.empty();
+        } else {
+            // Рассчитываем изменение минимального веса между событиями A и B
+            double oldMinAB = Math.min(eventAOldWeight, eventBWeight);
+            double newMinAB = Math.min(eventANewWeight, eventBWeight);
+            double minABDelta = newMinAB - oldMinAB;
 
-                    return createEventSimilarity(eventA, eventB, similarity);
-                })
-                .collect(Collectors.toList());
+            // Обновляем сумму минимальных весов для пары событий
+            double updatedMinWeightsSum = get(eventA, eventB) + minABDelta;
+            put(eventA, eventB, updatedMinWeightsSum);
+
+            // Получаем обновлённую сумму минимальных весов
+            double minWeightsSum = get(eventA, eventB);
+
+            // Вычисляем нормы (корни из сумм квадратов весов)
+            double norm1 = Math.sqrt(totalWeights.getOrDefault(eventA, 0.0));
+            double norm2 = Math.sqrt(totalWeights.getOrDefault(eventB, 0.0));
+
+            if (norm1 == 0 || norm2 == 0) {
+                return Optional.empty();
+            }
+
+            // Вычисляем схожесть по формуле косинусного сходства
+            double similarity = minWeightsSum / (norm1 * norm2);
+
+            // Возвращаем результат в виде Avro-объекта
+            return Optional.of(createSimilarityAvro(eventA, eventB, similarity));
+        }
     }
 
     /**
-     * Создаёт объект EventSimilarity из двух идентификаторов мероприятий и значения схожести.
+     * Рассчитывает коэффициенты схожести между новым мероприятием и всеми остальными мероприятиями,
+     * на основе первого взаимодействия пользователя.
+     * <p>
+     * Метод добавляет новое мероприятие в матрицу весов, обновляет общую сумму весов,
+     * и для каждого существующего мероприятия рассчитывает коэффициент схожести по формуле косинусного сходства.
      *
-     * @param eventA      идентификатор первого мероприятия
-     * @param eventB      идентификатор второго мероприятия
-     * @param similarity  значение схожести
-     * @return объект EventSimilarity
+     * @param eventA   идентификатор нового мероприятия
+     * @param user     идентификатор пользователя, который совершил действие
+     * @param weightA  вес взаимодействия пользователя с новым мероприятием
+     * @return         список объектов EventSimilarityAvro — результаты расчёта коэффициентов схожести
      */
-    private EventSimilarity createEventSimilarity(long eventA, long eventB, double similarity) {
-        return new EventSimilarity(
-                Math.min(eventA, eventB),
-                Math.max(eventA, eventB),
-                similarity
-        );
+    private List<EventSimilarityAvro> calculateNewSimilarities(Long eventA, Long user, Double weightA) {
+        weightedUserActionsMatrix.computeIfAbsent(eventA, k -> new HashMap<>(Map.of(user, weightA)));
+        totalWeights.put(eventA, weightA);
+        List<EventSimilarityAvro> similarities = new ArrayList<>();
+
+        for (Map.Entry<Long, Map<Long, Double>> entry : weightedUserActionsMatrix.entrySet()) {
+            Long eventB = entry.getKey();
+            if (eventB.equals(eventA)) {
+                continue; // Пропускаем сравнение с самим собой
+            }
+
+            Double weightB = entry.getValue().getOrDefault(user, 0.0);
+            if (weightB == 0.0) {
+                continue; // Пропускаем события без взаимодействия пользователя
+            }
+
+            double minWeight = Math.min(weightA, weightB);
+            put(eventA, eventB, minWeight);
+
+            double norm1 = totalWeights.getOrDefault(eventA, 0.0);
+            double norm2 = totalWeights.getOrDefault(eventB, 0.0);
+
+            if (norm1 == 0 || norm2 == 0) {
+                continue; // Избегаем деления на ноль
+            }
+
+            double similarity = minWeight / (Math.sqrt(norm1) * Math.sqrt(norm2));
+
+            similarities.add(createSimilarityAvro(eventA, eventB, similarity));
+        }
+        return similarities;
     }
 
     /**
-     * Создаёт объект EventSimilarityAvro из EventSimilarity и временной метки.
-     *
-     * @param similarity  объект EventSimilarity
-     * @param timestamp   временная метка
-     * @return объект EventSimilarityAvro
-     */
-    private EventSimilarityAvro createAvroEvent(EventSimilarity similarity, Instant timestamp) {
-        return EventSimilarityAvro.newBuilder()
-                .setSourceEventId(similarity.sourceEventId())
-                .setTargetEventId(similarity.targetEventId())
-                .setSimilarityScore(similarity.similarityScore())
-                .setCalculatedAt(timestamp)
-                .build();
-    }
-
-    /**
-     * Возвращает текущее значение схожести между двумя мероприятиями.
+     * Возвращает сумму минимальных весов для пары мероприятий.
      *
      * @param eventA  идентификатор первого мероприятия
      * @param eventB  идентификатор второго мероприятия
@@ -262,13 +233,12 @@ public class AggregatorServiceImpl implements AggregatorService {
         long first = Math.min(eventA, eventB);
         long second = Math.max(eventA, eventB);
 
-        return eventSimilarityScores
-                .computeIfAbsent(first, k -> new ConcurrentHashMap<>())
+        return minWeightsSums.computeIfAbsent(first, k -> new ConcurrentHashMap<>())
                 .getOrDefault(second, 0.0);
     }
 
     /**
-     * Устанавливает значение схожести между двумя мероприятиями.
+     * Устанавливает значение суммы минимальных весов для пары мероприятий.
      *
      * @param eventA  идентификатор первого мероприятия
      * @param eventB  идентификатор второго мероприятия
@@ -278,24 +248,62 @@ public class AggregatorServiceImpl implements AggregatorService {
         long first = Math.min(eventA, eventB);
         long second = Math.max(eventA, eventB);
 
-        eventSimilarityScores
-                .computeIfAbsent(first, k -> new ConcurrentHashMap<>())
+        minWeightsSums.computeIfAbsent(first, k -> new ConcurrentHashMap<>())
                 .put(second, sum);
     }
 
     /**
-     * Возвращает рейтинг взаимодействия в зависимости от типа действия.
+     * Возвращает вес взаимодействия в зависимости от типа действия.
      *
      * @param type тип действия
      * @return значение рейтинга
      * @throws IllegalArgumentException если передан неизвестный тип действия
      */
-    private double getActionRating(ActionTypeAvro type) {
+    private double getActionWeight(ActionTypeAvro type) {
         return switch (type) {
             case VIEW -> 0.4;
             case REGISTER -> 0.8;
             case LIKE -> 1.0;
             default -> throw new IllegalArgumentException("Неизвестный тип действия: " + type);
         };
+    }
+
+    /**
+     * Создаёт объект EventSimilarityAvro, представляющий коэффициент схожести между двумя мероприятиями.
+     * <p>
+     * Метод гарантирует, что идентификатор события A всегда меньше или равен идентификатору события B,
+     * чтобы избежать дублирования записей для одной и той же пары событий в обратном порядке.
+     *
+     * @param eventA           идентификатор первого мероприятия
+     * @param eventB           идентификатор второго мероприятия
+     * @param similarityScore  значение коэффициента схожести между мероприятиями (от 0 до 1)
+     * @return                 объект EventSimilarityAvro, содержащий информацию о схожести
+     */
+    private EventSimilarityAvro createSimilarityAvro(Long eventA, Long eventB, double similarityScore) {
+        return EventSimilarityAvro.newBuilder()
+                .setEventA(Math.min(eventA, eventB))
+                .setEventB(Math.max(eventA, eventB))
+                .setScore(similarityScore)
+                .setTimestamp(Instant.now())
+                .build();
+    }
+
+    /**
+     * Отправляет список коэффициентов схожести между мероприятиями в Kafka.
+     * <p>
+     * Метод перебирает все элементы списка и отправляет каждый из них в соответствующий топик Kafka.
+     * В случае успешной отправки логируется информация о сообщении. При ошибке — логируется исключение.
+     *
+     * @param similarityList список объектов EventSimilarityAvro, представляющих коэффициенты схожести
+     */
+    private void sendSimilarities(List<EventSimilarityAvro> similarityList) {
+        for (EventSimilarityAvro similarity : similarityList) {
+            try {
+                kafkaTemplate.send(kafkaTopics.getEventsSimilarity(), similarity);
+                log.info("Отправлено в Kafka: {}", similarity);
+            } catch (Exception e) {
+                log.error("Ошибка при отправке в Kafka: {}", similarity, e);
+            }
+        }
     }
 }

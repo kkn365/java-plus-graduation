@@ -13,10 +13,7 @@ import ru.practicum.recommendations.avro.UserActionAvro;
 public class KafkaClient {
     private final AggregatorService aggregatorService;
 
-    @KafkaListener(
-            topics = "${kafka.topic.stats.v1}",
-            groupId = "${spring.kafka.consumer.group-id}"
-    )
+    @KafkaListener(topics = "${collector.kafka.consumer.topics.user-actions}")
     public void listenActions(UserActionAvro actionAvro) {
         aggregatorService.processAction(actionAvro);
     }

@@ -71,7 +71,7 @@ public class CollectorServiceImpl implements CollectorService {
      * @param actionAvro Avro-объект, который нужно отправить
      */
     private void sendToKafka(UserActionAvro actionAvro) {
-        String topic = kafkaTopics.getUserEvents();
+        String topic = kafkaTopics.getUserActions();
         log.trace("Отправка события в топик: {}", topic);
         kafkaTemplate.send(topic, actionAvro);
     }
