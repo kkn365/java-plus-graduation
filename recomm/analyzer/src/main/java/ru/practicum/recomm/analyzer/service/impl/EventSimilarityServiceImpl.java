@@ -3,12 +3,12 @@ package ru.practicum.recomm.analyzer.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import ru.practicum.recomm.analyzer.mapper.EventSimilarityMapper;
 import ru.practicum.recomm.analyzer.model.EventSimilarity;
 import ru.practicum.recomm.analyzer.repository.EventSimilarityRepository;
 import ru.practicum.recomm.analyzer.service.api.EventSimilarityService;
 import ru.practicum.recommendations.avro.EventSimilarityAvro;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
@@ -22,7 +22,6 @@ import java.util.Optional;
 public class EventSimilarityServiceImpl implements EventSimilarityService {
 
     private final EventSimilarityRepository eventSimilarityRepository;
-    private final EventSimilarityMapper eventSimilarityMapper;
 
     /**
      * Обрабатывает событие схожести между двумя мероприятиями.
@@ -36,7 +35,13 @@ public class EventSimilarityServiceImpl implements EventSimilarityService {
     public void handleEventSimilarity(EventSimilarityAvro eventSimilarityAvro) {
         log.info("Обработка события схожести: {}", eventSimilarityAvro);
 
-        EventSimilarity eventSimilarity = eventSimilarityMapper.toEventSimilarity(eventSimilarityAvro);
+        EventSimilarity eventSimilarity = EventSimilarity.builder()
+                .sourceEventId(eventSimilarityAvro.getEventA())
+                .targetEventId(eventSimilarityAvro.getEventB())
+                .similarityScore(eventSimilarityAvro.getScore())
+                .calculatedAt(LocalDateTime.from(eventSimilarityAvro.getTimestamp()))
+                .build();
+
         Optional<EventSimilarity> existing = eventSimilarityRepository
                 .findBySourceEventIdAndTargetEventId(
                         eventSimilarity.getSourceEventId(),

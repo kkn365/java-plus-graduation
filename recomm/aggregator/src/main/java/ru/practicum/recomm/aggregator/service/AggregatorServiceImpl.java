@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import ru.practicum.recommendations.avro.ActionTypeAvro;
 import ru.practicum.recommendations.avro.EventSimilarityAvro;
 import ru.practicum.recommendations.avro.UserActionAvro;
-import ru.practicum.recomm.aggregator.config.KafkaTopics;
+import ru.practicum.recomm.aggregator.kafka.config.KafkaTopics;
 
 import java.time.Instant;
 import java.util.*;

@@ -1,4 +1,4 @@
-package ru.practicum.recomm.aggregator.config;
+package ru.practicum.recomm.aggregator.kafka.config;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -19,7 +19,7 @@ import org.springframework.validation.annotation.Validated;
 @Setter
 public class KafkaTopics {
     /**
-     * Имя топика для пользовательских действий.
+     * Имя топика для оценок схожести.
      */
     @NotNull(message = "eventsSimilarity не может быть null")
     private String eventsSimilarity;

@@ -5,7 +5,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import lombok.extern.slf4j.Slf4j;
-import ru.practicum.recomm.collector.conf.KafkaTopics;
+import ru.practicum.recomm.collector.kafka.config.KafkaTopics;
 import ru.practicum.recommendations.avro.ActionTypeAvro;
 import ru.practicum.recommendations.avro.UserActionAvro;
 import ru.practicum.recommendations.messages.ActionTypeProto;

@@ -1,5 +1,7 @@
-server:
-  port: 0  # Автоматически выбирает свободный порт
+grpc:
+  server:
+    port: 0
+    reflection-service-enabled: true
 
 spring:
   application:

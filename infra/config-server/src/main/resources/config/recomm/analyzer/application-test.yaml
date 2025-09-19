@@ -3,6 +3,10 @@ grpc:
     port: 0
 
 spring:
+  config:
+    activate:
+      on-profile: test  # Активирует эту конфигурацию только при запущенном профиле 'test'
+
   jpa:
     hibernate:
       ddl-auto: update  # Включает автоматическое обновление схемы БД в тестах
@@ -11,10 +15,10 @@ spring:
         format_sql: true  # Форматирование SQL-запросов в логах для удобства отладки
 
   datasource:
-    dataSourceClassName: org.postgresql.ds.PGSimpleDataSource
-    url: jdbc:postgresql://localhost:6432/analytics_db  # URL к локальной БД
-    username: recomm-analyzer  # Имя пользователя БД
-    password: recomm-analyzer  # Пароль пользователя БД
+    driver-class-name: org.h2.Driver  # Используется вместо deprecated driverClassName
+    url: jdbc:h2:mem:analytics_test_db;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH  # H2 в памяти с PostgreSQL-совместимым режимом
+    username: recomm-analyzer-test
+    password: recomm-analyzer-test
 
   # Автоматическое связывание с KafkaTemplate
   kafka:

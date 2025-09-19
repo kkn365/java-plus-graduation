@@ -6,10 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 import ru.practicum.core.api.internal.event.dto.EventDto;
 import ru.practicum.core.event.dto.events.UserEventParams;
 import ru.practicum.core.event.model.enums.events.EventSort;
@@ -85,6 +83,16 @@ public class PublicEventsController {
         return ResponseEntity.ok(events);
     }
 
+    /**
+     * Возвращает информацию о конкретном мероприятии по его идентификатору.
+     * <p>
+     * Метод извлекает идентификатор пользователя из HTTP-заголовка, вызывает сервис для получения данных о мероприятии,
+     * логирует операцию и возвращает результат в виде объекта {@link EventDto}.
+     *
+     * @param userId   идентификатор пользователя, запрашивающего мероприятие
+     * @param eventId  идентификатор мероприятия, которое необходимо получить
+     * @return ResponseEntity с данными мероприятия и статусом 200 OK
+     */
     @GetMapping("/{eventId}")
     public ResponseEntity<EventDto> getPublishedEvent(
             @RequestHeader(USER_ID_HEADER) Long userId,
@@ -98,6 +106,15 @@ public class PublicEventsController {
         return ResponseEntity.ok(eventDto);
     }
 
+    /**
+     * Возвращает список рекомендуемых мероприятий для указанного пользователя.
+     * <p>
+     * Метод извлекает идентификатор пользователя из заголовка запроса, запрашивает рекомендации у сервиса,
+     * логирует результат и возвращает его в виде JSON-списка объектов {@link EventDto}.
+     *
+     * @param userId идентификатор пользователя, для которого запрашиваются рекомендации
+     * @return ResponseEntity со списком рекомендуемых мероприятий и статусом 200 OK
+     */
     @GetMapping("/recommendations")
     public ResponseEntity<List<EventDto>> getRecommendations(@RequestHeader(USER_ID_HEADER) Long userId) {
         log.info("GET /events/recommendations with request header: {}={}", USER_ID_HEADER, userId);
@@ -108,6 +125,16 @@ public class PublicEventsController {
         return ResponseEntity.ok(recommendations);
     }
 
+    /**
+     * Добавляет лайк к указанному мероприятию от имени пользователя.
+     * <p>
+     * Метод извлекает идентификатор пользователя из HTTP-заголовка, вызывает соответствующий метод сервиса,
+     * и возвращает ответ без содержимого (204 No Content), если операция прошла успешно.
+     *
+     * @param userId   идентификатор пользователя, который ставит лайк
+     * @param eventId  идентификатор мероприятия, которому ставится лайк
+     * @return ResponseEntity с кодом 204 No Content
+     */
     @PutMapping("/{eventId}/like")
     public ResponseEntity<Void> addLike(
             @RequestHeader(USER_ID_HEADER) Long userId,

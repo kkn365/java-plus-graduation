@@ -1,4 +1,4 @@
-package ru.practicum.recomm.collector.conf;
+package ru.practicum.recomm.collector.kafka.config;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
