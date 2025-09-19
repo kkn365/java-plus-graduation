@@ -112,6 +112,12 @@
             <version>${org.mapstruct.version}</version>
             <scope>provided</scope>
         </dependency>
+
+        <!-- Doc -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-ui</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
